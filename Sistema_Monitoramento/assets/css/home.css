@@ -1,0 +1,169 @@
+:root {
+  --color-white: #ffffff;
+  --color-gray: #e3e8ec;
+  --color-dark: #1d2129;
+  --color-green: #42b72a;
+  --color-green-hover: #36a420;
+  --color-gray-dark: #6c757d;
+  --color-gray-hover: #5a6268;
+  --color-danger: red;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-gray);
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  padding: 40px 0;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  background-color: var(--color-white);
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.header-text {
+  flex: 1;
+  min-width: 250px;
+}
+
+.header-text h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-dark);
+  margin-bottom: 10px;
+}
+
+.header-text p {
+  font-size: 16px;
+  color: #666;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 200px;
+}
+
+.btn {
+  background-color: var(--color-green);
+  color: var(--color-white);
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.3s;
+  width: 200px;
+  cursor: pointer;
+  border: none;
+}
+
+.btn:hover {
+  background-color: var(--color-green-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-gray-dark);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-gray-hover);
+}
+
+.texto-login {
+  color: var(--color-danger);
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 10px;
+  text-align: center;
+  display: block;
+}
+
+.accordion {
+  border-top: 1px solid #ccc;
+  padding-top: 20px;
+  margin-top: 30px;
+  cursor: pointer;
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accordion-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 200px;
+  align-items: center;
+}
+
+a.texto-login {
+  color: red;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.accordion-content {
+  margin-top: 15px;
+  color: #555;
+  font-size: 14px;
+  text-align: left;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .button-group {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

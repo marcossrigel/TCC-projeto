@@ -1,0 +1,152 @@
+body { font-family: Arial; background: #f1f1f1; }
+.container {
+    max-width: 90%;
+    margin: auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #ccc;
+}
+h2 { text-align: center; }
+.table-wrapper {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    min-width: unset;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+input[type="text"], input[type="date"] {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+input[name="numero_processo_sei[]"] {
+    min-width: 180px;
+}
+input[name="valor_orcamento[]"],
+input[name="valor_bm[]"],
+input[name="saldo_obra[]"] {
+    min-width: 150px;
+}
+
+td:last-child {
+  white-space: nowrap;
+}
+
+td:last-child button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  font-size: 16px;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+}
+.buttons {
+    text-align: center;
+    margin-top: 10px;
+}
+.buttons button {
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    background: #3399ff;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.buttons button:hover {
+    background: #237acc;
+}
+.botao-acao {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  margin: 0 4px;
+  padding: 2px 6px;
+  transition: transform 0.2s ease;
+}
+
+.botao-acao:hover {
+  transform: scale(1.2);
+}
+
+.botao-mais {
+  color: #6a5acd; /* roxo suave */
+}
+
+.botao-menos {
+  color: #ff4d4d; /* vermelho suave */
+}
+
+.celula-acoes {
+  display: flex;
+  align-items: center;   /* centraliza verticalmente os botões */
+  justify-content: center;
+  height: 100%;          /* garante altura igual à linha */
+  box-sizing: border-box;
+}
+
+#medicoes { border-collapse: separate; border-spacing: 0; }
+
+/* 2) remove o border-bottom das células */
+#medicoes td, #medicoes th { border: 1px solid #ddd; }
+#medicoes td, #medicoes th { border-bottom: none; }
+
+/* 3) aplica o separador na linha inteira */
+#medicoes tr { border-bottom: 1px solid #ddd; }
+
+/* 4) pequenos ajustes */
+.celula-acoes { display:flex; align-items:center; justify-content:center; padding:8px; }
+#medicoes td { vertical-align: top; }
+#medicoes textarea { margin:0; }
+
+/* Inputs/textarea ocupam a célula toda */
+#medicoes input,
+#medicoes textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+/* Campo numérico curtinho (Ordem) */
+#medicoes .num {
+  text-align: center;
+}
+
+/* Altura e redimensionamento do textarea (Observação) */
+#medicoes .obs {
+  min-height: 36px;
+  resize: vertical;
+  line-height: 1.35;
+  white-space: pre-wrap; /* quebra o texto automaticamente */
+  word-wrap: break-word; /* força quebra no meio de palavras longas */
+  overflow: hidden;
+}
+
+#medicoes tr:last-child td {
+    border-bottom: 1px solid #ddd;
+}
+
+
+/* ---- Larguras por coluna via <colgroup> ---- */
+/* ajuste os valores se quiser mais/menos espaço */
+.col-ordem       { width: 5ch; }
+.col-texto-largo { width: 20ch; } /* era 24ch */
+.col-data        { width: 12ch; } /* era 14ch */
+.col-status      { width: 14ch; } /* era 18ch */
+.col-observacao  { width: 25ch; } /* era 30ch */
+.col-acoes       { width: 7ch; }
