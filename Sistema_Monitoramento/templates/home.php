@@ -83,8 +83,8 @@ $LOGO_PATH = 'assets/img/logo-cehab-azul.png'; // coloque aqui o arquivo da logo
   <div class="absolute inset-0 bg-black/40" data-close-modal></div>
 
   <!-- content -->
-  <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
-    <div class="w-full max-w-4xl mt-8 bg-white rounded-2xl shadow-xl border">
+  <div class="absolute inset-0 flex items-start justify-center overflow-y-auto overflow-x-hidden p-2 sm:p-4">
+    <div class="w-full sm:max-w-3xl md:max-w-4xl mt-8 bg-white rounded-2xl shadow-xl border overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b">
         <h3 class="text-lg font-semibold text-slate-800">Criar uma nova iniciativa</h3>
         <button type="button" class="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-100" data-close-modal>Fechar ×</button>
@@ -157,83 +157,97 @@ $LOGO_PATH = 'assets/img/logo-cehab-azul.png'; // coloque aqui o arquivo da logo
             <label class="block text-sm font-medium text-slate-700 mb-1">Data da Atualização</label>
             <input type="date" name="data_vistoria" class="w-full border rounded-lg px-3 py-2" required>
           </div>
-
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Nº do contrato</label>
-            <div class="flex gap-2">
-              <input type="text" name="numero_contrato_prefixo" id="numero_contrato_prefixo"
-                     maxlength="3" placeholder="000" pattern="\d{3}" required
-                     class="w-20 text-center border rounded-lg px-2 py-2">
-              <span class="self-center">/</span>
-              <input type="text" name="numero_contrato_ano" id="numero_contrato_ano"
-                     maxlength="4" placeholder="2025" pattern="\d{4}" required
-                     class="w-24 text-center border rounded-lg px-2 py-2">
-            </div>
-            <input type="hidden" name="numero_contrato" id="numero_contrato">
-          </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-semibold text-slate-800 mb-1">Informações Básicas</label>
-          <div class="grid md:grid-cols-5 gap-4">
-            <div>
-              <label class="block text-sm text-slate-700 mb-1">Status</label>
-              <select name="ib_status" class="w-full border rounded-lg px-3 py-2" required>
-                <option value="">Selecione...</option>
-                <option value="Em Execução">Em Execução</option>
-                <option value="Paralizado">Paralizado</option>
-                <option value="Concluido">Concluido</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm text-slate-700 mb-1">% Execução</label>
-              <input type="text" name="ib_execucao" placeholder="visualização" readonly class="w-full border rounded-lg px-3 py-2">
-            </div>
-            <div>
-              <label class="block text-sm text-slate-700 mb-1">% Previsto</label>
-              <input type="text" name="ib_previsto" class="w-full border rounded-lg px-3 py-2">
-            </div>
-            <div>
-              <label class="block text-sm text-slate-700 mb-1">% Variação</label>
-              <input type="text" name="ib_variacao" id="ib_variacao" placeholder="visualização" readonly class="w-full border rounded-lg px-3 py-2">
-            </div>
-            <div class="md:col-span-1 md:col-start-5">
-              <label class="block text-sm text-slate-700 mb-1">Valor Medido Acumulado</label>
-              <input type="text" name="ib_valor_medio" class="w-full border rounded-lg px-3 py-2">
-            </div>
-          </div>
-        </div>
+<!-- INFORMACOES BASICAS -->
+<div>
+  <label class="block text-sm font-semibold text-slate-800 mb-1">Informações Básicas</label>
 
-        <div class="grid md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm text-slate-700 mb-1">Secretaria</label>
-            <input type="text" name="ib_secretaria" class="w-full border rounded-lg px-3 py-2" placeholder="Digite a secretaria">
-          </div>
-          <div>
-            <label class="block text-sm text-slate-700 mb-1">Diretoria</label>
-            <select name="ib_diretoria" class="w-full border rounded-lg px-3 py-2" required>
-              <option value="">Selecione...</option>
-              <option value="Seguranca">Segurança</option>
-              <option value="Educacao">Educação</option>
-              <option value="Saude">Saúde</option>
-              <option value="Infra Estrategicas">Infra Estratégicas</option>
-              <option value="Infra Grandes Obras">Infra Grandes Obras</option>
-              <option value="Social">Social</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm text-slate-700 mb-1">Gestor Responsável</label>
-            <input type="text" name="ib_gestor_responsavel" class="w-full border rounded-lg px-3 py-2">
-          </div>
-          <div>
-            <label class="block text-sm text-slate-700 mb-1">Fiscal Responsável</label>
-            <input type="text" name="ib_fiscal" class="w-full border rounded-lg px-3 py-2">
-          </div>
-          <div class="md:col-span-3">
-            <label class="block text-sm text-slate-700 mb-1">Nº Processo SEI</label>
-            <input type="text" name="ib_numero_processo_sei" class="w-full border rounded-lg px-3 py-2">
-          </div>
-        </div>
+  <!-- Linha 1: Status | % Execução | % Previsto | % Variação | Nº do contrato -->
+  <div class="grid md:grid-cols-5 gap-4 [&>div]:min-w-0">
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">Status</label>
+      <select name="ib_status" class="w-full border rounded-lg px-3 py-2" required>
+        <option value="">Selecione...</option>
+        <option value="Em Execução">Em Execução</option>
+        <option value="Paralizado">Paralizado</option>
+        <option value="Concluido">Concluido</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">% Execução</label>
+      <input type="text" name="ib_execucao" placeholder="visualização"
+             readonly class="w-full border rounded-lg px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">% Previsto</label>
+      <input type="text" name="ib_previsto" class="w-full border rounded-lg px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">% Variação</label>
+      <input type="text" name="ib_variacao" id="ib_variacao" placeholder="visualização"
+             readonly class="w-full border rounded-lg px-3 py-2">
+    </div>
+
+    <!-- Nº do contrato (compacto, sem vazar) -->
+    <div class="min-w-0">
+      <label class="block text-sm text-slate-700 mb-1">Nº do contrato</label>
+      <div class="flex items-center gap-2">
+        <input type="text" name="numero_contrato_prefixo" id="numero_contrato_prefixo"
+               maxlength="3" placeholder="000" pattern="\d{3}" required
+               class="border rounded-lg px-2 py-2 text-center w-[68px] shrink-0">
+        <span class="self-center text-slate-500 select-none">/</span>
+        <input type="text" name="numero_contrato_ano" id="numero_contrato_ano"
+               maxlength="4" placeholder="2025" pattern="\d{4}" required
+               class="border rounded-lg px-2 py-2 text-center w-[84px] shrink-0">
+      </div>
+      <input type="hidden" name="numero_contrato" id="numero_contrato">
+    </div>
+  </div>
+
+  <!-- Linha 2: Valor Medido | Secretaria | Diretoria | Gestor | Fiscal -->
+  <div class="grid md:grid-cols-5 gap-4 mt-4 [&>div]:min-w-0">
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">Valor Acumulado</label>
+      <input type="text" name="ib_valor_medio" class="w-full border rounded-lg px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">Secretaria</label>
+      <input type="text" name="ib_secretaria" class="w-full border rounded-lg px-3 py-2"
+             placeholder="Digite a secretaria">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">Diretoria</label>
+      <select name="ib_diretoria" class="w-full border rounded-lg px-3 py-2" required>
+        <option value="">Selecione...</option>
+        <option value="Seguranca">Segurança</option>
+        <option value="Educacao">Educação</option>
+        <option value="Saude">Saúde</option>
+        <option value="Infra Estrategicas">Infra Estratégicas</option>
+        <option value="Infra Grandes Obras">Infra Grandes Obras</option>
+        <option value="Social">Social</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">Gestor Responsável</label>
+      <input type="text" name="ib_gestor_responsavel" class="w-full border rounded-lg px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-700 mb-1">Fiscal Responsável</label>
+      <input type="text" name="ib_fiscal" class="w-full border rounded-lg px-3 py-2">
+    </div>
+  </div>
+</div>
+
+
+        
 
         <div>
           <label class="block text-sm text-slate-700 mb-1">OBJETO (opcional)</label>
