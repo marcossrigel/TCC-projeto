@@ -176,7 +176,7 @@ $nome_iniciativa = htmlspecialchars($nome_iniciativa);
         <div class="buttons">
             <button type="button" onclick="adicionarLinha()">Adicionar Linha</button>
             <button type="submit" name="salvar">Salvar</button>
-            <button type="button" onclick="window.location.href='index.php?page=visualizar';">&lt; Voltar</button>
+            <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
         </div>
     </form>
 </div>

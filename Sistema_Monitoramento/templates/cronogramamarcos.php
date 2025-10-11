@@ -356,7 +356,7 @@ textarea {
           $voltar_url .= "&diretoria=$diretoria";
       }
       ?>
-      <button type="button" onclick="window.location.href='index.php?page=visualizar';">&lt; Voltar</button>
+      <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
     
     </div>
 

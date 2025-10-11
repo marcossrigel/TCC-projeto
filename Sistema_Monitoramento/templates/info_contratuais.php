@@ -186,7 +186,7 @@ $dados = mysqli_fetch_assoc($qContr);
       </table>
       <div class="button-group">
         <button type="submit" name="salvar" style="background-color:rgb(42, 179, 0);">Salvar</button>
-        <button type="button" onclick="window.location.href='index.php?page=visualizar';">&lt; Voltar</button>
+        <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
       </div>
     </form>
   </div>

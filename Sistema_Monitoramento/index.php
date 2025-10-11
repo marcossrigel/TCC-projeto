@@ -26,7 +26,6 @@ if (!$page) {
 <?php
   $cssMap = [
     'home' => 'home.css',
-    'visualizar' => 'visualizar.css',
     'diretorias' => 'diretorias.css',
     'formulario' => 'formulario.css',
     'editar_iniciativa' => 'editar_iniciativa.css',

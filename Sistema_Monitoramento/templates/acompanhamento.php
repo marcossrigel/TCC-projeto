@@ -130,7 +130,7 @@ $dados_pendencias = mysqli_query(
       <button type="button" onclick="addRow()">Adicionar Linha</button>
       <button type="button" onclick="deleteRow()">Excluir Linha</button>
       <button type="submit" name="salvar" id="submit">Salvar</button>
-      <button type="button" onclick="window.location.href='index.php?page=visualizar';">&lt; Voltar</button>
+      <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
     </div>
   </form>
 </div>
