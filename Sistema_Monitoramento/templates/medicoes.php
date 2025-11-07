@@ -6,17 +6,25 @@ mysqli_set_charset($conexao, "utf8mb4");
 
 $id_iniciativa     = isset($_GET['id_iniciativa']) ? (int)$_GET['id_iniciativa'] : 0;
 $id_usuario_logado = (int)$_SESSION['id_usuario'];
+$tipo_usuario      = $_SESSION['tipo_usuario'] ?? '';
 
-$stmt = $conexao->prepare("SELECT id_usuario AS id_dono, iniciativa FROM iniciativas WHERE id = ?");
+// ---- Resolve DONO, diretoria e valida permissão ----
+$stmt = $conexao->prepare("
+  SELECT id_usuario AS id_dono, iniciativa, ib_diretoria
+  FROM iniciativas
+  WHERE id = ?
+");
 $stmt->bind_param("i", $id_iniciativa);
 $stmt->execute();
 $res = $stmt->get_result();
 $row = $res->fetch_assoc();
 if (!$row) { die("Iniciativa não encontrada."); }
-$id_dono = (int)$row['id_dono'];
-$nome_iniciativa = $row['iniciativa'] ?? 'Iniciativa Desconhecida';
 
-$temAcesso = ($id_usuario_logado === $id_dono);
+$id_dono          = (int)$row['id_dono'];
+$nome_iniciativa  = $row['iniciativa'] ?? 'Iniciativa Desconhecida';
+$diretoria        = trim($row['ib_diretoria'] ?? '');
+
+$temAcesso = ($tipo_usuario === 'admin') || ($id_usuario_logado === $id_dono);
 if (!$temAcesso) {
   $stmt = $conexao->prepare("
     SELECT 1 FROM compartilhamentos
@@ -28,9 +36,11 @@ if (!$temAcesso) {
 }
 if (!$temAcesso) { die("Sem permissão para acessar esta iniciativa."); }
 
+// ---- Helpers null-safe ----
 function e($v){ return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 function money_br($v){ return ($v===null||$v==='') ? 'R$ ' : 'R$ '.number_format((float)$v,2,',','.'); }
 
+// ---- Salvar (sempre no DONO) ----
 if (isset($_POST['salvar'])) {
   $valor_orcamento = $_POST['valor_orcamento'] ?? [];
   $valor_bm        = $_POST['valor_bm'] ?? [];
@@ -77,6 +87,7 @@ if (isset($_POST['salvar'])) {
   exit;
 }
 
+// ---- Exclusão (do DONO) ----
 if (!empty($_POST['excluir_ids'])) {
   foreach ($_POST['excluir_ids'] as $id_excluir) {
     $id_excluir = (int)$id_excluir;
@@ -84,11 +95,21 @@ if (!empty($_POST['excluir_ids'])) {
   }
 }
 
+// ---- Carregar linhas do DONO ----
 $dados = mysqli_query($conexao, "
   SELECT * FROM medicoes 
   WHERE id_usuario=$id_dono AND id_iniciativa=$id_iniciativa
   ORDER BY data_inicio, id
 ");
+
+// ---- URL do botão Voltar ----
+if ($tipo_usuario === 'admin') {
+  $url_voltar = $diretoria
+    ? 'index.php?page=visualizar&diretoria=' . rawurlencode($diretoria)
+    : 'index.php?page=diretorias';
+} else {
+  $url_voltar = 'index.php?page=home';
+}
 ?>
 
 <div class="container">
@@ -129,7 +150,7 @@ $dados = mysqli_query($conexao, "
         <button type="button" onclick="adicionarLinha()">Adicionar Linha</button>
         <button type="button" onclick="removerLinha()">Excluir Linha</button>
         <button type="submit" name="salvar">Salvar</button>
-        <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
+        <button type="button" onclick="window.location.href='<?php echo htmlspecialchars($url_voltar, ENT_QUOTES, 'UTF-8'); ?>';">&lt; Voltar</button>
       </div>
     </div>
   </form>

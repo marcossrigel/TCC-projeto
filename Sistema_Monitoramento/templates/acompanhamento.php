@@ -3,41 +3,55 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
-  session_start();
-}
-if (!isset($_SESSION['id_usuario'])) {
-  header('Location: login.php');
-  exit;
-}
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+if (!isset($_SESSION['id_usuario'])) { header('Location: login.php'); exit; }
 
-include_once('config.php');
-mysqli_set_charset($conexao, "utf8mb4");
+require_once 'config.php';
+mysqli_set_charset($conexao, 'utf8mb4');
 
-$id_iniciativa     = isset($_GET['id_iniciativa']) ? (int)$_GET['id_iniciativa'] : 0;
-$id_usuario_logado = (int)($_SESSION['id_usuario'] ?? 0);
+// 1) Pega parâmetros e sessão
+$id_iniciativa      = isset($_GET['id_iniciativa']) ? (int)$_GET['id_iniciativa'] : 0;
+$id_usuario_logado  = (int)($_SESSION['id_usuario'] ?? 0);
+$tipo_usuario       = $_SESSION['tipo_usuario'] ?? '';
 
-$stmt = $conexao->prepare("SELECT id_usuario AS id_dono, iniciativa FROM iniciativas WHERE id = ?");
+if ($id_iniciativa <= 0) { die('Iniciativa inválida.'); }
+
+$stmt = $conexao->prepare("
+  SELECT id_usuario AS id_dono, iniciativa, ib_diretoria
+  FROM iniciativas
+  WHERE id = ?
+");
 $stmt->bind_param("i", $id_iniciativa);
 $stmt->execute();
 $res = $stmt->get_result();
 $ini = $res->fetch_assoc();
 if (!$ini) { die("Iniciativa não encontrada."); }
-$id_dono = (int)$ini['id_dono'];
-$nome_iniciativa = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
 
-$temAcesso = ($id_usuario_logado === $id_dono);
+$id_dono         = (int)$ini['id_dono'];
+$nome_iniciativa = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
+$diretoria       = trim($ini['ib_diretoria'] ?? '');
+
+// 3) Permissão (bypass para admin)
+$temAcesso = ($tipo_usuario === 'admin') || ($id_usuario_logado === $id_dono);
+
 if (!$temAcesso) {
   $stmt = $conexao->prepare("
-    SELECT 1 FROM compartilhamentos
-    WHERE id_dono = ? AND id_compartilhado = ? AND id_iniciativa = ?
-    LIMIT 1
+    SELECT 1
+      FROM compartilhamentos
+     WHERE id_dono = ?
+       AND id_compartilhado = ?
+       AND id_iniciativa = ?
+     LIMIT 1
   ");
   $stmt->bind_param("iii", $id_dono, $id_usuario_logado, $id_iniciativa);
   $stmt->execute();
   $temAcesso = (bool)$stmt->get_result()->fetch_row();
 }
+
 if (!$temAcesso) { die("Sem permissão para acessar esta iniciativa."); }
+
+// 4) (o restante do seu código: salvar POST, listar pendências, HTML, etc.)
+
 
 if (isset($_POST['salvar'])) {
   $problemas      = $_POST['problema']      ?? [];
@@ -84,6 +98,17 @@ $dados_pendencias = mysqli_query(
    WHERE id_usuario = $id_dono AND id_iniciativa = $id_iniciativa
    ORDER BY id ASC"
 );
+
+// URL do botão Voltar
+if ($tipo_usuario === 'admin') {
+  // Admin volta para a lista da mesma diretoria (visualizar.php)
+  $url_voltar = 'index.php?page=visualizar&diretoria=' . rawurlencode($diretoria ?: 'Educacao');
+  // Se preferir voltar para o grid de diretorias, use:
+  // $url_voltar = 'index.php?page=diretorias';
+} else {
+  // Usuário comum volta para a home dele
+  $url_voltar = 'index.php?page=home';
+}
 ?>
 
 <div class="table-container">
@@ -130,7 +155,9 @@ $dados_pendencias = mysqli_query(
       <button type="button" onclick="addRow()">Adicionar Linha</button>
       <button type="button" onclick="deleteRow()">Excluir Linha</button>
       <button type="submit" name="salvar" id="submit">Salvar</button>
-      <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
+      <button type="button" onclick="window.location.href='<?php echo htmlspecialchars($url_voltar, ENT_QUOTES, 'UTF-8'); ?>';">
+        &lt; Voltar
+      </button>
     </div>
   </form>
 </div>

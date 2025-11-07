@@ -1,22 +1,31 @@
 <?php
-include("config.php");
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+if (empty($_SESSION['id_usuario'])) { http_response_code(401); exit; }
 
-$termo = $_GET['termo'] ?? '';
+require_once __DIR__ . '/config.php';
 
-if (strlen($termo) < 1) {
-    echo json_encode([]);
-    exit;
+$termo = trim($_GET['termo'] ?? '');
+if (mb_strlen($termo) < 2) { echo json_encode([]); exit; }
+
+$sql = "SELECT nome, usuario_rede
+          FROM usuarios
+         WHERE nome LIKE CONCAT('%', ?, '%')
+            OR usuario_rede LIKE CONCAT('%', ?, '%')
+         ORDER BY nome
+         LIMIT 20";
+$st = $conexao->prepare($sql);
+$st->bind_param("ss", $termo, $termo);
+$st->execute();
+$r = $st->get_result();
+
+$out = [];
+while ($row = $r->fetch_assoc()) {
+  // Mostra “Nome (usuario_rede)” para evitar ambiguidade
+  $display = $row['nome'];
+  if (!empty($row['usuario_rede'])) $display .= " ({$row['usuario_rede']})";
+  $out[] = $display;
 }
+$st->close();
 
-$stmt = $conexao->prepare("SELECT usuario_rede FROM usuarios WHERE usuario_rede LIKE CONCAT('%', ?, '%') LIMIT 10");
-$stmt->bind_param("s", $termo);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$usuarios = [];
-while ($row = $result->fetch_assoc()) {
-    $usuarios[] = $row['usuario_rede'];
-}
-
-echo json_encode($usuarios);
-?>
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode($out);

@@ -23,16 +23,27 @@ $id_iniciativa = isset($_POST['id_iniciativa'])
   : (isset($_GET['id_iniciativa']) ? (int)$_GET['id_iniciativa'] : 0);
 
 // --- Resolve DONO e valida permissão ---
-$stmt = $conexao->prepare("SELECT id_usuario AS id_dono, iniciativa FROM iniciativas WHERE id = ?");
+// --- Resolve DONO e valida permissão ---
+$stmt = $conexao->prepare("
+  SELECT id_usuario AS id_dono, iniciativa, ib_diretoria
+  FROM iniciativas
+  WHERE id = ?
+");
 $stmt->bind_param("i", $id_iniciativa);
 $stmt->execute();
 $res = $stmt->get_result();
 $ini = $res->fetch_assoc();
 if (!$ini) { die("Iniciativa não encontrada."); }
-$id_dono = (int)$ini['id_dono'];
-$nome_iniciativa = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
 
-$temAcesso = ($id_usuario_logado === $id_dono);
+$id_dono          = (int)$ini['id_dono'];
+$nome_iniciativa  = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
+$diretoria        = trim($ini['ib_diretoria'] ?? '');
+
+$tipo_usuario = $_SESSION['tipo_usuario'] ?? '';
+
+// >>> BYPASS PARA ADMIN <<<
+$temAcesso = ($tipo_usuario === 'admin') || ($id_usuario_logado === $id_dono);
+
 if (!$temAcesso) {
   $stmt = $conexao->prepare("
     SELECT 1 FROM compartilhamentos
@@ -44,6 +55,7 @@ if (!$temAcesso) {
   $temAcesso = (bool)$stmt->get_result()->fetch_row();
 }
 if (!$temAcesso) { die("Você não tem permissão para acessar esta iniciativa."); }
+
 
 // --- Salvar sempre no DONO ---
 if (!function_exists('formatar_moeda')) {
@@ -158,6 +170,15 @@ $qContr = mysqli_query($conexao, "
 ");
 $dados = mysqli_fetch_assoc($qContr);
 
+// --- URL do botão Voltar ---
+if ($tipo_usuario === 'admin') {
+  $url_voltar = $diretoria
+    ? 'index.php?page=visualizar&diretoria=' . rawurlencode($diretoria)
+    : 'index.php?page=diretorias';
+} else {
+  $url_voltar = 'index.php?page=home';
+}
+
 ?>
 
   <div class="container">
@@ -186,7 +207,10 @@ $dados = mysqli_fetch_assoc($qContr);
       </table>
       <div class="button-group">
         <button type="submit" name="salvar" style="background-color:rgb(42, 179, 0);">Salvar</button>
-        <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
+        <button type="button"
+          onclick="window.location.href='<?php echo htmlspecialchars($url_voltar, ENT_QUOTES, 'UTF-8'); ?>';">
+          &lt; Voltar
+        </button>
       </div>
     </form>
   </div>
