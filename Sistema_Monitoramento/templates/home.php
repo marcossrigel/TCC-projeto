@@ -9,15 +9,14 @@ if (empty($_SESSION['id_usuario'])) {
   exit;
 }
 
-$id_usuario   = (int)($_SESSION['id_usuario'] ?? 0);
+$id_usuario = (int)($_SESSION['id_usuario'] ?? 0);
 
-$stmt = $conexao->prepare("SELECT setor FROM usuarios WHERE id_usuario = ? LIMIT 1");
-$stmt->bind_param("i", $id_usuario);
-$stmt->execute();
-$res = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-$setorRaw = $res['setor'] ?? ($_SESSION['setor'] ?? '—');
+/**
+ * Fonte do “setor”: tente primeiro diretoria da sessão (vinda do login),
+ * depois $_SESSION['setor'], senão mostra “—”.
+ * (Não faz SELECT em coluna inexistente.)
+ */
+$setorRaw = $_SESSION['diretoria'] ?? ($_SESSION['setor'] ?? '—');
 
 $setoresMap = [
   'DAF'   => 'DAF - Diretoria de Administração e Finanças',
@@ -44,40 +43,57 @@ $setoresMap = [
   'SUPLAN'=> 'SUPLAN - Superintendência de Planejamento',
   'DPH'   => 'DPH - Diretoria de Projetos Habitacionais',
 ];
-
-if (strpos($setorRaw, ' - ') === false) {
+if ($setorRaw !== '—' && strpos($setorRaw, ' - ') === false) {
   $setorRaw = $setoresMap[$setorRaw] ?? $setorRaw;
 }
-
-$_SESSION['setor'] = $setorRaw;
-
+$_SESSION['setor'] = $setorRaw; // mantém padronizado
 $setor = htmlspecialchars($setorRaw, ENT_QUOTES, 'UTF-8');
 
-$sql = "SELECT * FROM iniciativas
-        WHERE id_usuario = $id_usuario
-           OR EXISTS (
-              SELECT 1 FROM compartilhamentos c
-              WHERE c.id_iniciativa = iniciativas.id
-                AND c.id_compartilhado = $id_usuario
-           )
-        ORDER BY id DESC";
+$nome  = htmlspecialchars($_SESSION['nome'] ?? 'Usuário', ENT_QUOTES, 'UTF-8');
+$usuarioRede = $_SESSION['usuario_rede'] ?? null;
+
+if ($usuarioRede === null) {
+  $stmt = $conexao->prepare("SELECT usuario_rede FROM usuarios WHERE id_usuario = ?");
+  $stmt->bind_param('i', $id_usuario);
+  $stmt->execute();
+  $row = $stmt->get_result()->fetch_assoc();
+  $usuarioRede = $row['usuario_rede'] ?? '';
+  $_SESSION['usuario_rede'] = $usuarioRede; // cache
+}
+
+$usuarioRedeEsc = htmlspecialchars($usuarioRede ?: '—', ENT_QUOTES, 'UTF-8');
+
+/**
+ * Iniciativas visíveis pelo usuário:
+ * - criadas por ele OU
+ * - compartilhadas com ele.
+ */
+$sql = "SELECT *
+          FROM iniciativas
+         WHERE id_usuario = $id_usuario
+            OR EXISTS (
+                 SELECT 1
+                   FROM compartilhamentos c
+                  WHERE c.id_iniciativa = iniciativas.id
+                    AND c.id_compartilhado = $id_usuario
+               )
+         ORDER BY id DESC";
 $iniciativas = $conexao->query($sql);
-
-$nome  = htmlspecialchars($_SESSION['nome']  ?? 'Usuário', ENT_QUOTES, 'UTF-8');
-$msg   = $_GET['msg'] ?? '';
 ?>
-
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <header class="w-full border-b bg-white shadow-sm">
   <div class="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <img src="assets/img/logo-cehab-azul.png" alt="CEHAB"
+      <img src="./img/logo.png" alt="CEHAB"
            class="h-8 w-auto object-contain select-none" draggable="false" />
-      <h1 class="text-slate-800 text-lg sm:text-xl font-semibold">
-        CEHAB - Sistema de Monitoramento
-      </h1>
+      <div>
+        <h1 class="text-slate-800 text-lg sm:text-xl font-semibold">Sistema de Monitoramento de Obras</h1>
+        <p class="text-xs text-slate-600">
+          Olá, <?= $nome ?>! <span class="text-slate-500">usuário: <?= $usuarioRedeEsc ?></span>
+        </p>
+      </div>
     </div>
 
     <nav class="flex items-center gap-2">
@@ -91,9 +107,10 @@ $msg   = $_GET['msg'] ?? '';
         👥 Compartilhar
       </button>
 
-      <a href="sair.php"
+      <!-- home.php está dentro de /templates, então o sair.php também -->
+      <a href="templates/sair.php"
         class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-red-600 text-sm font-semibold hover:bg-red-100 transition">
-        Sair
+          Sair
       </a>
     </nav>
   </div>
@@ -107,13 +124,12 @@ $msg   = $_GET['msg'] ?? '';
       <div class="p-6 border-b border-slate-200">
         <div class="text-sm text-slate-800 flex items-center gap-2">
           <span class="inline-flex items-center gap-2">
-            <span class="text-slate-700">Setor do usuário:</span>
-            <span class="chip"><?= $setor ?></span>
+            <h6>Iniciativas Cadastradas</h6>
           </span>
         </div>
       </div>
 
-      <!-- Cards de iniciativas dentro da moldura -->
+      <!-- Cards de iniciativas -->
       <section class="p-6">
         <?php if ($iniciativas && $iniciativas->num_rows > 0): ?>
           <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="cardsIniciativas">
@@ -124,10 +140,20 @@ $msg   = $_GET['msg'] ?? '';
                 $previsto = htmlspecialchars($row['ib_previsto'] ?? '', ENT_QUOTES, 'UTF-8');
                 $variacao = htmlspecialchars($row['ib_variacao'] ?? '', ENT_QUOTES, 'UTF-8');
                 $contrato = htmlspecialchars($row['numero_contrato'] ?? '', ENT_QUOTES, 'UTF-8');
-                $dt       = htmlspecialchars($row['data_vistoria'] ?? '', ENT_QUOTES, 'UTF-8');
+
+                // >>> formata a data
+                $dtRaw = $row['data_vistoria'] ?? '';
+                $dtFmt = '';
+                if ($dtRaw) {
+                  $d = DateTime::createFromFormat('Y-m-d', $dtRaw);
+                  if ($d) $dtFmt = $d->format('d/m/Y');
+                }
+                $dt = htmlspecialchars($dtFmt, ENT_QUOTES, 'UTF-8');
+
                 $titulo   = htmlspecialchars($row['iniciativa'] ?? '', ENT_QUOTES, 'UTF-8');
                 $id       = (int)$row['id'];
               ?>
+
               <article
                 class="group cursor-pointer rounded-xl border border-slate-300 bg-slate-100 hover:border-blue-400 hover:shadow-md transition p-4"
                 data-id="<?= $id ?>"
@@ -185,10 +211,7 @@ $msg   = $_GET['msg'] ?? '';
 
 <!-- Modal: Criar Iniciativa -->
 <div id="modalIniciativa" class="fixed inset-0 z-50 hidden">
-  <!-- backdrop -->
   <div class="absolute inset-0 bg-black/40" data-close-modal></div>
-
-  <!-- content -->
   <div class="absolute inset-0 flex items-start justify-center overflow-y-auto overflow-x-hidden p-2 sm:p-4">
     <div class="w-full sm:max-w-3xl md:max-w-4xl mt-8 bg-white rounded-2xl shadow-xl border overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b">
@@ -196,9 +219,7 @@ $msg   = $_GET['msg'] ?? '';
         <button type="button" class="rounded-lg px-3 py-1.5 text-slate-800 hover:bg-slate-100" data-close-modal>Fechar ×</button>
       </div>
 
-      <!-- FORM: mesmos names/ids do seu projeto -->
-      <form class="px-6 py-5 space-y-6" action="templates/formulario.php"  method="post" id="formIniciativa">
-
+      <form class="px-6 py-5 space-y-6" action="formulario.php" method="post" id="formIniciativa">
         <div class="grid md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
             <label class="block text-sm font-medium text-slate-700 mb-1">Nome da Iniciativa</label>
@@ -265,10 +286,8 @@ $msg   = $_GET['msg'] ?? '';
           </div>
         </div>
 
-        <!-- Informações Básicas -->
         <div>
           <label class="block text-sm font-semibold text-slate-800 mb-1">Informações Básicas</label>
-
           <div class="grid md:grid-cols-5 gap-4 [&>div]:min-w-0">
             <div>
               <label class="block text-sm text-slate-700 mb-1">Status</label>
@@ -279,22 +298,18 @@ $msg   = $_GET['msg'] ?? '';
                 <option value="Concluido">Concluido</option>
               </select>
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">% Execução</label>
               <input type="text" name="ib_execucao" placeholder="visualização" readonly class="w-full border rounded-lg px-3 py-2">
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">% Previsto</label>
               <input type="text" name="ib_previsto" class="w-full border rounded-lg px-3 py-2">
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">% Variação</label>
               <input type="text" name="ib_variacao" id="ib_variacao" placeholder="visualização" readonly class="w-full border rounded-lg px-3 py-2">
             </div>
-
             <div class="min-w-0">
               <label class="block text-sm text-slate-700 mb-1">Nº do contrato</label>
               <div class="flex items-center gap-2">
@@ -315,12 +330,10 @@ $msg   = $_GET['msg'] ?? '';
               <label class="block text-sm text-slate-700 mb-1">Valor Acumulado</label>
               <input type="text" name="ib_valor_medio" class="w-full border rounded-lg px-3 py-2">
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">Secretaria</label>
               <input type="text" name="ib_secretaria" class="w-full border rounded-lg px-3 py-2" placeholder="Digite a secretaria">
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">Diretoria</label>
               <select name="ib_diretoria" class="w-full border rounded-lg px-3 py-2" required>
@@ -333,12 +346,10 @@ $msg   = $_GET['msg'] ?? '';
                 <option value="Social">Social</option>
               </select>
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">Gestor Responsável</label>
               <input type="text" name="ib_gestor_responsavel" class="w-full border rounded-lg px-3 py-2">
             </div>
-
             <div>
               <label class="block text-sm text-slate-700 mb-1">Fiscal Responsável</label>
               <input type="text" name="ib_fiscal" class="w-full border rounded-lg px-3 py-2">
@@ -376,28 +387,17 @@ $msg   = $_GET['msg'] ?? '';
 
 <!-- Modal: Detalhes da Iniciativa -->
 <div id="modalDetalhes" class="fixed inset-0 z-50 hidden">
-  <!-- backdrop -->
   <div class="absolute inset-0 bg-black/40" data-close-detalhes></div>
-
-  <!-- content -->
   <div class="absolute inset-0 flex items-start justify-center overflow-y-auto p-4">
     <div class="w-full sm:max-w-3xl bg-white rounded-2xl shadow-xl border overflow-hidden mt-10">
       <div class="flex items-center justify-between px-6 py-4 border-b">
-      <h3 class="text-lg font-semibold text-slate-800" id="det_titulo">Iniciativa</h3>
-
-      <div class="flex items-center gap-2">
-        <button type="button"
-                id="btnEditarDetalhes"
-                class="rounded-lg px-3 py-1.5 text-blue-700 hover:bg-blue-50">
-          Editar
-        </button>
-
-        <button type="button"
-                class="rounded-lg px-3 py-1.5 text-slate-800 hover:bg-slate-100"
-                data-close-detalhes>Fechar ×</button>
+        <h3 class="text-lg font-semibold text-slate-800" id="det_titulo">Iniciativa</h3>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnEditarDetalhes"
+                  class="rounded-lg px-3 py-1.5 text-blue-700 hover:bg-blue-50">Editar</button>
+          <button type="button" class="rounded-lg px-3 py-1.5 text-slate-800 hover:bg-slate-100" data-close-detalhes>Fechar ×</button>
+        </div>
       </div>
-    </div>
-
 
       <div class="px-6 py-5 space-y-4 text-sm">
         <div class="grid md:grid-cols-2 gap-4">
@@ -430,46 +430,32 @@ $msg   = $_GET['msg'] ?? '';
         </div>
       </div>
 
-      <!-- Ações (grade 2x3, centradas) -->
       <div class="px-6 py-6 border-t">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
           <button id="btnPendencias"
-            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100
-                  flex items-center justify-center gap-2">
+            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-2">
             <span>🛠</span> <span>Acompanhar Pendências</span>
           </button>
-
           <button id="btnProjeto"
-            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100
-                  flex items-center justify-center gap-2">
+            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-2">
             <span>📋</span> <span>Projeto e Licitação</span>
           </button>
-
           <button id="btnContratuais"
-            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100
-                  flex items-center justify-center gap-2">
+            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-2">
             <span>📄</span> <span>Informações Contratuais</span>
           </button>
-
           <button id="btnMedicoes"
-            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100
-                  flex items-center justify-center gap-2">
+            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-2">
             <span>📊</span> <span>Acompanhamento de Medições</span>
           </button>
-
           <button id="btnCronograma"
-            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100
-                  flex items-center justify-center gap-2">
+            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-2">
             <span>📆</span> <span>Cronograma</span>
           </button>
-
           <button id="btnConcluida"
-            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100
-                  flex items-center justify-center gap-2">
+            class="w-full rounded-xl border bg-slate-50 px-4 py-3 font-semibold text-slate-800 hover:bg-slate-100 flex items-center justify-center gap-2">
             <span>✔️</span> <span>Concluída</span>
           </button>
-
         </div>
       </div>
 
@@ -479,10 +465,7 @@ $msg   = $_GET['msg'] ?? '';
 
 <!-- Modal: Compartilhar Iniciativas -->
 <div id="modalCompartilhar" class="fixed inset-0 z-50 hidden">
-  <!-- backdrop -->
   <div class="absolute inset-0 bg-black/40" data-close-compartilhar></div>
-
-  <!-- content -->
   <div class="absolute inset-0 flex items-start justify-center overflow-y-auto overflow-x-hidden p-2 sm:p-4">
     <div class="w-full sm:max-w-3xl md:max-w-4xl mt-8 bg-white rounded-2xl shadow-xl border overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b">
@@ -491,10 +474,7 @@ $msg   = $_GET['msg'] ?? '';
           Fechar ×
         </button>
       </div>
-
-      <!-- onde o HTML será injetado -->
       <div id="conteudoCompartilhar" class="px-6 py-5">
-        <!-- carregando... -->
         <div class="text-slate-600">Carregando…</div>
       </div>
     </div>
@@ -502,11 +482,120 @@ $msg   = $_GET['msg'] ?? '';
 </div>
 
 <script>
+/* ===== Abertura dos modais do topo ===== */
+document.querySelector('[data-action="criar"]')?.addEventListener('click', () => {
+  document.getElementById('modalIniciativa')?.classList.remove('hidden');
+});
+
+document.querySelector('[data-action="compartilhar"]')?.addEventListener('click', async () => {
+  const modal = document.getElementById('modalCompartilhar');
+  const content = document.getElementById('conteudoCompartilhar');
+  modal.classList.remove('hidden');
+  content.innerHTML = '<div class="text-slate-600">Carregando…</div>';
+
+  // carrega o HTML do modal
+  const html = await (await fetch('templates/compartilhar.php', { cache: 'no-store' })).text();
+  content.innerHTML = html;
+
+  // ===== Autocomplete
+  const input = document.getElementById('cmp_usuario');
+  const sug = document.getElementById('cmp_sugestoes');
+  let sugTimer = null;
+
+  function hideSug(){ sug.classList.add('hidden'); }
+  function showSug(){ sug.classList.remove('hidden'); }
+
+  input.addEventListener('input', () => {
+    clearTimeout(sugTimer);
+    const termo = input.value.trim();
+    if (termo.length < 2) { hideSug(); return; }
+    sugTimer = setTimeout(async () => {
+      const data = await (await fetch('templates/compartilhar_buscar_usuario.php?termo=' + encodeURIComponent(termo))).json();
+      sug.innerHTML = '';
+      if (!data.length) { hideSug(); return; }
+      data.forEach(txt => {
+        const row = document.createElement('div');
+        row.className = 'px-3 py-2 hover:bg-slate-50 cursor-pointer';
+        row.textContent = txt;
+        row.onclick = () => { input.value = txt; hideSug(); };
+        sug.appendChild(row);
+      });
+      showSug();
+    }, 200);
+  });
+  document.addEventListener('click', (e) => { if (!input.contains(e.target)) hideSug(); }, { once:false });
+
+  // ===== Selecionar todas
+  const selAll = document.getElementById('cmp_todos');
+  const cbs = [...content.querySelectorAll('input[name="iniciativas[]"]')];
+  selAll?.addEventListener('change', () => cbs.forEach(cb => cb.checked = selAll.checked));
+  cbs.forEach(cb => cb.addEventListener('change', () => {
+    selAll.checked = cbs.length && cbs.every(x => x.checked);
+  }));
+
+  // ===== Submit compartilhar
+  const form = document.getElementById('formCompartilhar');
+  form?.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(form);
+    const resp = await fetch('templates/salvar_compartilhamento.php', { method:'POST', body: fd });
+    const txt = await resp.text();
+    if (txt.trim() === 'OK') {
+      toast('Compartilhado com sucesso!', 'ok');
+      // recarrega a lista “Já compartilhado com”
+      const html2 = await (await fetch('templates/compartilhar_modal.php', { cache: 'no-store' })).text();
+      content.innerHTML = html2; // simples refresh do conteúdo
+    } else {
+      toast('Falha: ' + txt, 'err');
+    }
+  });
+
+  // ===== Remover compartilhamento
+  function wireRemove() {
+    content.querySelectorAll('.cmp-remover').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('Deseja remover este compartilhamento?')) return;
+        const id = btn.dataset.id;
+        const resp = await fetch('templates/remover_compartilhamento.php', {
+          method:'POST',
+          headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+          body:'id_compartilhado=' + encodeURIComponent(id)
+        });
+        const t = await resp.text();
+        if (t.trim() === 'OK') {
+          toast('Removido!', 'ok');
+          // atualiza painel
+          const html3 = await (await fetch('templates/compartilhar_modal.php', { cache: 'no-store' })).text();
+          content.innerHTML = html3;
+          wireRemove();
+        } else {
+          toast('Erro ao remover', 'err');
+        }
+      };
+    });
+  }
+  wireRemove();
+});
+
+// fecha modal por backdrop/botão
+document.getElementById('modalCompartilhar')?.addEventListener('click', (ev) => {
+  if (ev.target.hasAttribute('data-close-compartilhar')) ev.currentTarget.classList.add('hidden');
+});
+
+// helper de toast (já tem no seu arquivo; mantenha apenas uma versão)
+function toast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.className = 'fixed top-4 right-4 z-[60] px-4 py-2 rounded-lg shadow ' +
+                (type==='ok' ? 'bg-green-600 text-white' : 'bg-red-600 text-white');
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
 /* ===== Modal de Detalhes (com edição) ===== */
 (function() {
   const modal = document.getElementById('modalDetalhes');
 
-  // Mapeia campos do DOM -> payload de update (name => {elId, type, options?})
   const FIELD_MAP = {
     data_vistoria : { elId: 'det_data',        type: 'date' },
     numero_contrato: { elId: 'det_contrato',   type: 'text' },
@@ -524,11 +613,10 @@ $msg   = $_GET['msg'] ?? '';
     observacoes   : { elId: 'det_obs',         type: 'textarea' },
   };
 
-  let originalValues = {};       // usado p/ cancelar
+  let originalValues = {};
   let isEditing = false;
   let currentId = null;
 
-  // Abre modal preenchendo dados
   function openWith(el) {
     const get = (k) => el.dataset[k] || '—';
     det_titulo.textContent     = get('iniciativa');
@@ -548,10 +636,9 @@ $msg   = $_GET['msg'] ?? '';
     det_obs.textContent        = get('obs');
 
     currentId = el.dataset.id;
-    leaveEditMode(true); // garante estado limpo
+    leaveEditMode(true);
     modal.classList.remove('hidden');
 
-    // Botões de ação (navegações) — mantidos
     document.getElementById('btnPendencias').onclick = () =>
       window.location.href = 'index.php?page=acompanhamento&id_iniciativa=' + currentId;
     document.getElementById('btnProjeto').onclick = () =>
@@ -565,19 +652,16 @@ $msg   = $_GET['msg'] ?? '';
     document.getElementById('btnConcluida').onclick = markDone;
   }
 
-  // Helpers para alternar entre span e input/textarea/select
   function enterEditMode() {
     if (isEditing) return;
     isEditing = true;
 
-    // guarda original
     originalValues = {};
     for (const [name, cfg] of Object.entries(FIELD_MAP)) {
       const span = document.getElementById(cfg.elId);
       const raw = (span.textContent || '').trim();
       originalValues[name] = raw === '—' ? '' : raw;
 
-      // cria controle
       let input;
       if (cfg.type === 'textarea') {
         input = document.createElement('textarea');
@@ -596,14 +680,10 @@ $msg   = $_GET['msg'] ?? '';
         input = document.createElement('input');
         input.type = 'date';
         input.className = 'border rounded-lg px-2 py-1';
-        // tenta converter dd/mm/aaaa → yyyy-mm-dd se vier assim; senão mantém
         const v = originalValues[name];
         const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/) || v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if (m) {
-          input.value = (m[3] ? `${m[3]}-${m[2]}-${m[1]}` : v); // se veio dd/mm/aaaa
-        } else {
-          input.value = v;
-        }
+        if (m) input.value = (m[3] ? `${m[3]}-${m[2]}-${m[1]}` : v);
+        else input.value = v;
       } else {
         input = document.createElement('input');
         input.type = 'text';
@@ -611,20 +691,16 @@ $msg   = $_GET['msg'] ?? '';
         input.value = originalValues[name];
       }
       input.dataset.bind = name;
-
-      // troca o span pelo input visualmente
       span.replaceWith(input);
-      input.id = cfg.elId; // mantém id para futuro
+      input.id = cfg.elId;
     }
 
-    // troca botão "Editar" por "Salvar" e adiciona "Cancelar"
     const btnEdit = document.getElementById('btnEditarDetalhes');
     btnEdit.textContent = 'Salvar';
     btnEdit.classList.remove('text-blue-700');
     btnEdit.classList.add('bg-blue-600','text-white','hover:bg-blue-700','px-4','rounded-full');
     btnEdit.onclick = saveChanges;
 
-    // cria/capta botão cancelar
     let btnCancel = document.getElementById('btnCancelarEdicao');
     if (!btnCancel) {
       btnCancel = document.createElement('button');
@@ -641,7 +717,6 @@ $msg   = $_GET['msg'] ?? '';
   }
 
   function leaveEditMode(resetSpans) {
-    // se não está editando, apenas garante botões
     const btnEdit = document.getElementById('btnEditarDetalhes');
     btnEdit.textContent = 'Editar';
     btnEdit.className   = 'rounded-lg px-3 py-1.5 text-blue-700 hover:bg-blue-50';
@@ -652,7 +727,6 @@ $msg   = $_GET['msg'] ?? '';
     isEditing = false;
 
     if (!resetSpans) {
-      // volta valores originais
       for (const [name, cfg] of Object.entries(FIELD_MAP)) {
         const input = document.getElementById(cfg.elId);
         const span  = document.createElement('span');
@@ -660,19 +734,14 @@ $msg   = $_GET['msg'] ?? '';
         span.textContent = originalValues[name] || '—';
         input.replaceWith(span);
       }
-    } else {
-      // já está com spans originais (no openWith)
     }
   }
 
   async function saveChanges() {
-    // coleta valores
     const payload = { id_iniciativa: currentId };
     for (const [name, cfg] of Object.entries(FIELD_MAP)) {
       const el = document.getElementById(cfg.elId);
       let val = (el.value ?? '').trim();
-
-      // normaliza data para yyyy-mm-dd
       if (cfg.type === 'date' && val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)) {
         const [,d,m,y] = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
         val = `${y}-${m}-${d}`;
@@ -681,18 +750,14 @@ $msg   = $_GET['msg'] ?? '';
     }
 
     try {
-      const resp = await fetch('templates/atualizar_iniciativa.php', {
+      const resp = await fetch('atualizar_iniciativa.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
       });
       const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || 'Falha ao salvar');
 
-      if (!resp.ok || !data.ok) {
-        throw new Error(data.error || 'Falha ao salvar');
-      }
-
-      // aplica valores salvos aos spans e sai do modo de edição
       for (const [name, cfg] of Object.entries(FIELD_MAP)) {
         const el = document.getElementById(cfg.elId);
         const span = document.createElement('span');
@@ -701,8 +766,6 @@ $msg   = $_GET['msg'] ?? '';
         el.replaceWith(span);
       }
       leaveEditMode(true);
-
-      // feedback visual simples
       toast('Alterações salvas!', 'ok');
     } catch (e) {
       toast('Não foi possível salvar. ' + e.message, 'err');
@@ -711,7 +774,7 @@ $msg   = $_GET['msg'] ?? '';
 
   async function markDone() {
     try {
-      const resp = await fetch('templates/marcar_concluida.php', {
+      const resp = await fetch('marcar_concluida.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
         body: 'id_iniciativa=' + encodeURIComponent(currentId)
@@ -732,21 +795,40 @@ $msg   = $_GET['msg'] ?? '';
     setTimeout(() => t.remove(), 2500);
   }
 
-  // abre ao clicar nos cards
   document.getElementById('cardsIniciativas')?.addEventListener('click', (ev) => {
     const card = ev.target.closest('article[data-id]');
     if (card) openWith(card);
   });
 
-  // fechar por clique no backdrop/botão
   modal?.addEventListener('click', (ev) => {
     if (ev.target.hasAttribute('data-close-detalhes') || ev.target.closest('[data-close-detalhes]')) {
       modal.classList.add('hidden');
     }
   });
 
-  // ativa o botão Editar
   document.getElementById('btnEditarDetalhes')?.addEventListener('click', enterEditMode);
 })();
-</script>
 
+/* ===== Fechar modal: Criar Iniciativa ===== */
+(() => {
+  const modal = document.getElementById('modalIniciativa');
+  const form  = document.getElementById('formIniciativa');
+
+  // fecha ao clicar no backdrop OU em qualquer elemento com data-close-modal
+  modal?.addEventListener('click', (ev) => {
+    const isClose = ev.target.matches('[data-close-modal]') ||
+                    ev.target.closest?.('[data-close-modal]');
+    if (isClose) {
+      modal.classList.add('hidden');
+      form?.reset(); // opcional: limpa o formulário ao fechar
+    }
+  });
+
+  // fecha com ESC
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') modal?.classList.add('hidden');
+  });
+})();
+
+
+</script>

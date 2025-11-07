@@ -10,22 +10,33 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 if (!isset($_SESSION['id_usuario'])) {
-    header('Location: login.php'); exit;
+    header('Location: login.php'); 
+    exit;
 }
 
 $id_usuario_logado = (int)($_SESSION['id_usuario'] ?? 0);
 $id_iniciativa     = isset($_GET['id_iniciativa']) ? (int)$_GET['id_iniciativa'] : 0;
 
-$stmt = $conexao->prepare("SELECT id_usuario AS id_dono, iniciativa FROM iniciativas WHERE id = ?");
+// ---- Resolve DONO e valida permissão ----
+$stmt = $conexao->prepare("
+  SELECT id_usuario AS id_dono, iniciativa, ib_diretoria
+  FROM iniciativas
+  WHERE id = ?
+");
 $stmt->bind_param("i", $id_iniciativa);
 $stmt->execute();
 $res = $stmt->get_result();
 $ini = $res->fetch_assoc();
 if (!$ini) { die("Iniciativa não encontrada."); }
-$id_dono = (int)$ini['id_dono'];
-$nome_iniciativa = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
 
-$temAcesso = ($id_usuario_logado === $id_dono);
+$id_dono          = (int)$ini['id_dono'];
+$nome_iniciativa  = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
+$diretoria        = trim($ini['ib_diretoria'] ?? '');
+$tipo_usuario     = $_SESSION['tipo_usuario'] ?? '';
+
+// --- BYPASS PARA ADMIN ---
+$temAcesso = ($tipo_usuario === 'admin') || ($id_usuario_logado === $id_dono);
+
 if (!$temAcesso) {
   $stmt = $conexao->prepare("
     SELECT 1 FROM compartilhamentos
@@ -38,6 +49,7 @@ if (!$temAcesso) {
 }
 if (!$temAcesso) { die("Sem permissão para acessar esta iniciativa."); }
 
+// ---- SALVAR ----
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['etapa'])) {
     $ids              = $_POST['ids'] ?? [];
     $ordens           = $_POST['ordem'] ?? [];
@@ -104,7 +116,14 @@ $sql = "
 ";
 $dados = mysqli_query($conexao, $sql);
 
-$nome_iniciativa = htmlspecialchars($nome_iniciativa);
+// --- URL do botão Voltar ---
+if ($tipo_usuario === 'admin') {
+  $url_voltar = $diretoria
+    ? 'index.php?page=visualizar&diretoria=' . rawurlencode($diretoria)
+    : 'index.php?page=diretorias';
+} else {
+  $url_voltar = 'index.php?page=home';
+}
 ?>
 
 <div class="container">
@@ -116,15 +135,15 @@ $nome_iniciativa = htmlspecialchars($nome_iniciativa);
         <table id="medicoes">
         <colgroup>
             <col class="col-ordem">
-            <col class="col-texto-largo">      
-            <col class="col-texto-largo">      
-            <col class="col-data">             
-            <col class="col-data">             
-            <col class="col-data">             
-            <col class="col-data">             
-            <col class="col-status">          
-            <col class="col-observacao">       
-            <col class="col-acoes">            
+            <col class="col-texto-largo">
+            <col class="col-texto-largo">
+            <col class="col-data">
+            <col class="col-data">
+            <col class="col-data">
+            <col class="col-data">
+            <col class="col-status">
+            <col class="col-observacao">
+            <col class="col-acoes">
         </colgroup>
 
         <thead>
@@ -145,8 +164,8 @@ $nome_iniciativa = htmlspecialchars($nome_iniciativa);
             <?php while ($linha = mysqli_fetch_assoc($dados)) { ?>
             <tr data-id="<?= $linha['id'] ?>">
                 <td>
-                <input type="hidden" name="ids[]" value="<?= htmlspecialchars($linha['id']) ?>">
-                <input class="num" type="text" name="ordem[]" value="<?= htmlspecialchars($linha['ordem'] ?? '') ?>">
+                    <input type="hidden" name="ids[]" value="<?= htmlspecialchars($linha['id']) ?>">
+                    <input class="num" type="text" name="ordem[]" value="<?= htmlspecialchars($linha['ordem'] ?? '') ?>">
                 </td>
 
                 <td><input type="text" name="etapa[]"        value="<?= htmlspecialchars($linha['etapa'] ?? '') ?>"></td>
@@ -160,25 +179,24 @@ $nome_iniciativa = htmlspecialchars($nome_iniciativa);
                 <td><input type="text" name="status[]" value="<?= htmlspecialchars($linha['status'] ?? '') ?>"></td>
 
                 <td>
-                <textarea name="observacao[]" class="obs" rows="1" wrap="soft"><?= htmlspecialchars($linha['observacao'] ?? '') ?></textarea>
+                    <textarea name="observacao[]" class="obs" rows="1" wrap="soft"><?= htmlspecialchars($linha['observacao'] ?? '') ?></textarea>
                 </td>
 
                 <td class="celula-acoes">
-                <button type="button" class="botao-acao botao-mais"  onclick="inserirAntes(this)">➕</button>
-                <button type="button" class="botao-acao botao-menos" onclick="deletarLinha(<?= (int)$linha['id'] ?>)">❌</button>
+                    <button type="button" class="botao-acao botao-mais"  onclick="inserirAntes(this)">➕</button>
+                    <button type="button" class="botao-acao botao-menos" onclick="deletarLinha(<?= (int)$linha['id'] ?>)">❌</button>
                 </td>
             </tr>
             <?php } ?>
         </tbody>
         </table>
 
-
         <div class="buttons">
             <button type="button" onclick="adicionarLinha()">Adicionar Linha</button>
             <button type="submit" name="salvar">Salvar</button>
-            <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
+            <button type="button" onclick="window.location.href='<?php echo htmlspecialchars($url_voltar, ENT_QUOTES, 'UTF-8'); ?>';">&lt; Voltar</button>
         </div>
     </form>
 </div>
-</div>
+
 <script src="js/projeto_licitacoes.js"></script>

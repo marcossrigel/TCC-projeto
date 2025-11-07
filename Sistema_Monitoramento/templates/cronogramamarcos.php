@@ -17,16 +17,24 @@ mysqli_set_charset($conexao, "utf8mb4");
 $tipo_usuario      = $_SESSION['tipo_usuario'] ?? 'usuario';
 $id_iniciativa     = (int)($_GET['id_iniciativa'] ?? 0);
 $id_usuario_logado = (int)($_SESSION['id_usuario'] ?? 0);
-$stmt = $conexao->prepare("SELECT id_usuario AS id_dono, iniciativa FROM iniciativas WHERE id = ?");
+$stmt = $conexao->prepare("
+  SELECT id_usuario AS id_dono, iniciativa, ib_diretoria
+  FROM iniciativas
+  WHERE id = ?
+");
 $stmt->bind_param("i", $id_iniciativa);
 $stmt->execute();
 $resIni = $stmt->get_result();
 $rowIni = $resIni->fetch_assoc();
 if (!$rowIni) { die("Iniciativa não encontrada."); }
-$id_dono = (int)$rowIni['id_dono'];
-$nome_iniciativa = $rowIni['iniciativa'] ?? 'Iniciativa Desconhecida';
 
-$temAcesso = ($id_usuario_logado === $id_dono);
+$diretoria      = trim($rowIni['ib_diretoria'] ?? '');
+$id_dono        = (int)$rowIni['id_dono'];
+$nome_iniciativa= $rowIni['iniciativa'] ?? 'Iniciativa Desconhecida';
+
+
+$temAcesso = ($tipo_usuario === 'admin') || ($id_usuario_logado === $id_dono);
+
 if (!$temAcesso) {
     $stmt = $conexao->prepare("
         SELECT 1 FROM compartilhamentos 
@@ -71,15 +79,17 @@ if (isset($_POST['etapa'])) {
 
         if ($id_existente > 0) {
             $query = "UPDATE marcos SET 
-                tipo_etapa='$tipo',
-                etapa='$etp',
-                id_etapa_custom='$etapa_custom',
-                inicio_previsto=$ini_prev,
-                termino_previsto=$ter_prev,
-                inicio_real=$ini_realv,
-                termino_real=$ter_realv,
-                evolutivo=$evo
-              WHERE id = $id_existente AND id_usuario = $id_dono";
+              tipo_etapa='$tipo',
+              etapa='$etp',
+              id_etapa_custom='$etapa_custom',
+              inicio_previsto=$ini_prev,
+              termino_previsto=$ter_prev,
+              inicio_real=$ini_realv,
+              termino_real=$ter_realv,
+              evolutivo=$evo
+            WHERE id = $id_existente
+              AND id_usuario = $id_dono
+              AND id_iniciativa = $id_iniciativa";
         } else {
             $query = "INSERT INTO marcos (
                 id_usuario, id_iniciativa, id_etapa_custom, tipo_etapa, etapa,
@@ -108,6 +118,14 @@ $query_dados = "
     END
 ";
 $dados = mysqli_query($conexao, $query_dados);
+
+if ($tipo_usuario === 'admin') {
+  $url_voltar = $diretoria
+    ? 'index.php?page=visualizar&diretoria=' . rawurlencode($diretoria)
+    : 'index.php?page=diretorias';
+} else {
+  $url_voltar = 'index.php?page=home';
+}
 
 function formatarParaBrasileiro($valor) {
     return number_format((float)$valor, 2, ',', '.');
@@ -284,7 +302,7 @@ textarea {
 
 <div class="table-container">
   <div class="main-title"><?php echo htmlspecialchars($nome_iniciativa); ?> - Cronograma de Marcos</div>
-  <form method="post" action="<?= $_SERVER['REQUEST_URI']; ?>">
+  <form method="post" action="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'], ENT_QUOTES, 'UTF-8'); ?>">
 
     <table id="spreadsheet">
       <thead>
@@ -349,21 +367,14 @@ textarea {
       <button type="button" onclick="deleteRow()">Excluir Linha</button>
       <button type="submit" name="salvar" id="submit" style="background-color:rgb(42, 179, 0);">Salvar</button>
       
-      <?php
-      $voltar_url = 'index.php?page=visualizar';
-      if ($tipo_usuario === 'admin' && isset($_GET['diretoria'])) {
-          $diretoria = urlencode($_GET['diretoria']);
-          $voltar_url .= "&diretoria=$diretoria";
-      }
-      ?>
-      <button type="button" onclick="window.location.href='index.php?page=home';">&lt; Voltar</button>
-    
+      <button type="button"
+        onclick="window.location.href='<?php echo htmlspecialchars($url_voltar, ENT_QUOTES, 'UTF-8'); ?>';">
+        &lt; Voltar
+      </button>
     </div>
-
     </div>
 
   </form>
-
 </div>
 
 <script>
