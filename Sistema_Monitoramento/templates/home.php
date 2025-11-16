@@ -130,10 +130,31 @@ $iniciativas = $conexao->query($sql);
             <?php while ($row = $iniciativas->fetch_assoc()): ?>
               <?php
                 $status   = htmlspecialchars($row['ib_status'] ?? '', ENT_QUOTES, 'UTF-8');
-                $execucao = htmlspecialchars($row['ib_execucao'] ?? '', ENT_QUOTES, 'UTF-8');
-                $previsto = htmlspecialchars($row['ib_previsto'] ?? '', ENT_QUOTES, 'UTF-8');
-                $variacao = htmlspecialchars($row['ib_variacao'] ?? '', ENT_QUOTES, 'UTF-8');
+                $execucao = $row['ib_execucao'] ?? '';
+                $previsto = $row['ib_previsto'] ?? '';
                 $contrato = htmlspecialchars($row['numero_contrato'] ?? '', ENT_QUOTES, 'UTF-8');
+
+                // --- cálculo da variação (previsto - execução) ---
+                $execFloat = ($execucao !== '' && $execucao !== null) ? (float)$execucao : null;
+                $prevFloat = ($previsto !== '' && $previsto !== null) ? (float)$previsto : null;
+                $variacaoFloat = null;
+
+                if ($execFloat !== null && $prevFloat !== null) {
+                    $variacaoFloat = $prevFloat - $execFloat;
+                }
+
+                // strings formatadas para exibir / usar nos data-attributes
+                $execStr = ($execFloat !== null)
+                    ? number_format($execFloat, 1, ',', '.') . '%'
+                    : '—';
+
+                $prevStr = ($prevFloat !== null)
+                    ? number_format($prevFloat, 1, ',', '.') . '%'
+                    : '—';
+
+                $varStr = ($variacaoFloat !== null)
+                    ? number_format($variacaoFloat, 1, ',', '.') . '%'
+                    : '—';
 
                 // >>> formata a data
                 $dtRaw = $row['data_vistoria'] ?? '';
@@ -144,8 +165,8 @@ $iniciativas = $conexao->query($sql);
                 }
                 $dt = htmlspecialchars($dtFmt, ENT_QUOTES, 'UTF-8');
 
-                $titulo   = htmlspecialchars($row['iniciativa'] ?? '', ENT_QUOTES, 'UTF-8');
-                $id       = (int)$row['id'];
+                $titulo = htmlspecialchars($row['iniciativa'] ?? '', ENT_QUOTES, 'UTF-8');
+                $id     = (int)$row['id'];
               ?>
 
               <article
@@ -154,9 +175,9 @@ $iniciativas = $conexao->query($sql);
                 data-iniciativa="<?= $titulo ?>"
                 data-data_vistoria="<?= $dt ?>"
                 data-status="<?= $status ?>"
-                data-execucao="<?= $execucao ?>"
-                data-previsto="<?= $previsto ?>"
-                data-variacao="<?= $variacao ?>"
+                data-execucao="<?= htmlspecialchars($execStr, ENT_QUOTES, 'UTF-8') ?>"
+                data-previsto="<?= htmlspecialchars($prevStr, ENT_QUOTES, 'UTF-8') ?>"
+                data-variacao="<?= htmlspecialchars($varStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-contrato="<?= $contrato ?>"
                 data-valor_medio="<?= htmlspecialchars($row['ib_valor_medio'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-secretaria="<?= htmlspecialchars($row['ib_secretaria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
@@ -179,7 +200,6 @@ $iniciativas = $conexao->query($sql);
                     <?= $status ?: 'Sem status' ?>
                   </span>
                   <span class="text-slate-700">Exec:</span>
-                  <span class="font-medium">
                     <?php
                       if ($execucao !== null && $execucao !== '') {
                           echo number_format((float)$execucao, 1, ',', '.') . '%';
@@ -189,7 +209,8 @@ $iniciativas = $conexao->query($sql);
                     ?>
                   </span>
                   <span class="text-slate-700">Prev:</span>
-                  <span class="font-medium"><?= $previsto ?: '—' ?></span>
+                  <span class="font-medium"><?= $prevStr ?></span>
+                  
                 </div>
 
                 <footer class="mt-3 flex items-center justify-between">
@@ -200,6 +221,7 @@ $iniciativas = $conexao->query($sql);
                 </footer>
               </article>
             <?php endwhile; ?>
+
           </div>
         <?php else: ?>
           <div class="rounded-lg border border-dashed p-8 text-center text-slate-400">
