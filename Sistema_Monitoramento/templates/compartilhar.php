@@ -67,7 +67,6 @@ if ($res_comp && $res_comp->num_rows) {
 ?>
 
 <div class="space-y-5">
-  <h2 class="text-lg font-semibold text-slate-800">Compartilhar Iniciativas</h2>
 
   <form id="formCompartilhar" class="space-y-4">
     <div>

@@ -5,51 +5,91 @@ document.addEventListener('input', function(e) {
 });
 
 document.querySelector("form").addEventListener("submit", function(e) {
-const orcamentos = document.querySelectorAll('input[name="valor_orcamento[]"]');
-const bms = document.querySelectorAll('input[name="valor_bm[]"]');
-let valido = true;
+    const orcamentos = document.querySelectorAll('input[name="valor_orcamento[]"]');
+    const bms = document.querySelectorAll('input[name="valor_bm[]"]');
+    let valido = true;
 
-for (let i = 0; i < orcamentos.length; i++) {
-    if (orcamentos[i].value.trim() === "" || bms[i].value.trim() === "") {
-        valido = false;
-        break;
+    for (let i = 0; i < orcamentos.length; i++) {
+        if (orcamentos[i].value.trim() === "" || bms[i].value.trim() === "") {
+            valido = false;
+            break;
+        }
     }
-}
 
-if (!valido) {
-    alert("Os campos 'Valor Total da Obra' e 'Valor BM' são obrigatórios.");
-    e.preventDefault();
-}
+    if (!valido) {
+        alert("Os campos 'Valor Total da Obra' e 'Valor BM' são obrigatórios.");
+        e.preventDefault();
+    }
 });
+
+// 🔒 Função para travar TODOS os campos de Valor Total da Obra
+function travarValorOrcamento() {
+    const campos = document.querySelectorAll('input[name="valor_orcamento[]"]');
+    if (!campos.length) return;
+
+    // vamos usar SEMPRE o valor da primeira linha como referência
+    const valorBase = campos[0].value;
+
+    campos.forEach(campo => {
+        // força o valor base
+        campo.value = valorBase;
+
+        // marca como readonly (HTML + propriedade)
+        campo.readOnly = true;
+        campo.setAttribute('readonly', 'readonly');
+
+        // bloqueia digitação
+        campo.onkeydown = function (e) {
+            e.preventDefault();
+            return false;
+        };
+
+        // bloqueia colar
+        campo.onpaste = function (e) {
+            e.preventDefault();
+            return false;
+        };
+
+        // se por algum motivo algo mudar, volta pro valor base
+        campo.oninput = function () {
+            campo.value = valorBase;
+        };
+    });
+}
 
 function adicionarLinha() {
-const table = document.getElementById('medicoes').getElementsByTagName('tbody')[0];
-const newRow = table.insertRow();
+    const table = document.getElementById('medicoes').getElementsByTagName('tbody')[0];
+    const newRow = table.insertRow();
 
-const primeiraLinha = table.rows[0];
-const valorOrcamentoOriginal = primeiraLinha?.cells[0]?.querySelector('input')?.value || '';
-const campos = [
-    { name: 'valor_orcamento[]', type: 'text', required: true, value: valorOrcamentoOriginal },
-    { name: 'valor_bm[]', type: 'text', required: true },
-    { name: 'saldo_obra[]', type: 'text' },
-    { name: 'bm[]', type: 'text' },
-    { name: 'numero_processo_sei[]', type: 'text' },
-    { name: 'data_inicio[]', type: 'date' },
-    { name: 'data_fim[]', type: 'date' }
-];
+    const primeiraLinha = table.rows[0];
+    const valorOrcamentoOriginal = primeiraLinha?.cells[0]?.querySelector('input')?.value || '';
 
-campos.forEach(campo => {
-    const cell = newRow.insertCell();
-    const input = document.createElement('input');
-    input.type = campo.type;
-    input.name = campo.name;
-    if (campo.required) input.required = true;
-    if (campo.value !== undefined) input.value = campo.value;
-    if (campo.step) input.step = campo.step;
-    cell.appendChild(input);
-});
+    const campos = [
+        { name: 'valor_orcamento[]', type: 'text', required: true, value: valorOrcamentoOriginal },
+        { name: 'valor_bm[]',        type: 'text', required: true },
+        { name: 'saldo_obra[]',      type: 'text' },
+        { name: 'bm[]',              type: 'text' },
+        { name: 'numero_processo_sei[]', type: 'text' },
+        { name: 'data_inicio[]',     type: 'date' },
+        { name: 'data_fim[]',        type: 'date' }
+    ];
+
+    campos.forEach(campo => {
+        const cell = newRow.insertCell();
+        const input = document.createElement('input');
+        input.type = campo.type;
+        input.name = campo.name;
+
+        if (campo.required) input.required = true;
+        if (campo.value !== undefined) input.value = campo.value;
+        if (campo.step) input.step = campo.step;
+
+        cell.appendChild(input);
+    });
+
+    // Depois de criar a nova linha, trava TODOS de novo
+    travarValorOrcamento();
 }
-
 
 function removerLinha() {
     const tabela = document.getElementById('medicoes').getElementsByTagName('tbody')[0];
@@ -58,8 +98,6 @@ function removerLinha() {
     if (!ultimaLinha) return;
 
     const id = ultimaLinha.getAttribute('data-id');
-
-    // <-- Adicione AQUI:
     console.log("ID da linha a excluir:", id);
 
     if (id) {
@@ -108,3 +146,8 @@ function recalcularSaldos() {
         saldos[i].value = formatarFloatParaDinheiro(saldo);
     }
 }
+
+// Garante que, ao carregar a página, todos já fiquem travados
+document.addEventListener('DOMContentLoaded', function () {
+    travarValorOrcamento();
+});

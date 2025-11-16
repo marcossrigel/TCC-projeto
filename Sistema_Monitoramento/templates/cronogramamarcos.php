@@ -72,8 +72,17 @@ if (isset($_POST['etapa'])) {
         $ini_realv= trim($inicio_real[$i])      !== '' ? "'".mysqli_real_escape_string($conexao,$inicio_real[$i])."'"      : "NULL";
         $ter_realv= trim($termino_real[$i])     !== '' ? "'".mysqli_real_escape_string($conexao,$termino_real[$i])."'"     : "NULL";
 
-        $evo_raw = trim($evolutivo[$i]);
-        $evo     = $evo_raw !== '' ? "'".mysqli_real_escape_string($conexao,$evo_raw)."'" : "NULL";
+        // trata vírgula e garante número entre 0 e 100
+        $evo_raw = trim($evolutivo[$i] ?? '');
+        if ($evo_raw === '') {
+            $evo = "NULL";
+        } else {
+            $evo_num = str_replace(',', '.', $evo_raw); // "0,3" -> "0.3"
+            $evo_num = (float)$evo_num;
+            if ($evo_num < 0)   $evo_num = 0;
+            if ($evo_num > 100) $evo_num = 100;
+            $evo = "'".mysqli_real_escape_string($conexao, $evo_num)."'";
+        }
 
         $tipo = mysqli_real_escape_string($conexao, $tipo_etapa[$i] ?? 'linha');
 
@@ -105,6 +114,43 @@ if (isset($_POST['etapa'])) {
             exit;
         }
     }
+
+    // Recalcula a % de execução direto no banco, usando apenas linhas com evolutivo não nulo
+  $sqlMedia = "
+      SELECT AVG(evolutivo) AS media_exec
+      FROM marcos
+      WHERE id_iniciativa = ?
+        AND id_usuario = ?
+        AND evolutivo IS NOT NULL
+  ";
+  $stmtMedia = $conexao->prepare($sqlMedia);
+  $stmtMedia->bind_param("ii", $id_iniciativa, $id_dono);
+  $stmtMedia->execute();
+  $resMedia = $stmtMedia->get_result()->fetch_assoc();
+  $stmtMedia->close();
+
+  $percentualExecucao = $resMedia['media_exec'];
+
+  if ($percentualExecucao === null) {
+      // nenhuma linha com evolutivo preenchido
+      $sqlUpd = "UPDATE iniciativas SET ib_execucao = NULL WHERE id = ?";
+      $stmtUpd = $conexao->prepare($sqlUpd);
+      $stmtUpd->bind_param("i", $id_iniciativa);
+  } else {
+      // garante limite entre 0 e 100
+      if ($percentualExecucao < 0)   $percentualExecucao = 0;
+      if ($percentualExecucao > 100) $percentualExecucao = 100;
+
+      $sqlUpd = "UPDATE iniciativas SET ib_execucao = ? WHERE id = ?";
+      $stmtUpd = $conexao->prepare($sqlUpd);
+      $stmtUpd->bind_param("di", $percentualExecucao, $id_iniciativa);
+  }
+
+  if (!$stmtUpd->execute()) {
+      die("Erro ao atualizar ib_execucao: " . $stmtUpd->error);
+  }
+  $stmtUpd->close();
+
 }
 
 $query_dados = "
@@ -301,7 +347,7 @@ textarea {
 </style>
 
 <div class="table-container">
-  <div class="main-title"><?php echo htmlspecialchars($nome_iniciativa); ?> - Cronograma de Marcos</div>
+  <div class="main-title"><?php echo htmlspecialchars($nome_iniciativa); ?> -Cronograma Marcos</div>
   <form method="post" action="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'], ENT_QUOTES, 'UTF-8'); ?>">
 
     <table id="spreadsheet">
@@ -383,51 +429,58 @@ let ultimoIdEtapa = 0;
 let subEtapasPorEtapa = {};
 
 document.querySelector('form').addEventListener('submit', function(event) {
-  const form = this;
+  const form  = this;
   const table = document.getElementById('spreadsheet').getElementsByTagName('tbody')[0];
   const linhas = table.rows;
-  let temLinhaValida = false;
 
-  let tituloIndex = -1;
-  let datasInicio = [];
+  let tituloIndex  = -1;
+  let datasInicio  = [];
   let datasTermino = [];
-
+  let temLinhaPreenchida = false; // apenas para o efeito visual
 
   for (let i = 0; i < linhas.length; i++) {
     const linha = linhas[i];
-    const id = linha.getAttribute('data-id');
     const cells = linha.cells;
 
     const etapaField = cells[1].querySelector('textarea, input');
-    
+
     let tipo = 'linha';
     if (etapaField?.placeholder === 'Título') {
       tipo = 'subtitulo';
     } else {
       const idValor = linha.querySelector('input[name="id_etapa_custom[]"]')?.value.trim();
       if (idValor && !idValor.includes('.')) {
-        tipo = 'subtitulo'; // número inteiro sem ponto: ex 6, 7, 8 → é título
+        tipo = 'subtitulo';
       }
     }
 
-    const dtInicioPrev  = cells[2].querySelector('input')?.value.trim() || '';
-    const dtTermPrev    = cells[3].querySelector('input')?.value.trim() || '';
-    const dtInicioReal  = cells[4].querySelector('input')?.value.trim() || '';
-    const dtTermReal    = cells[5].querySelector('input')?.value.trim() || '';
+    const dtInicioPrev =  cells[2].querySelector('input')?.value.trim() || '';
+    const dtTermPrev   =  cells[3].querySelector('input')?.value.trim() || '';
+    const dtInicioReal =  cells[4].querySelector('input')?.value.trim() || '';
+    const dtTermReal   =  cells[5].querySelector('input')?.value.trim() || '';
 
-    const campos = [ (etapaField?.value.trim() || ''), dtInicioPrev, dtTermPrev, dtInicioReal, dtTermReal ];
+    const campos = [
+      (etapaField?.value.trim() || ''),
+      dtInicioPrev,
+      dtTermPrev,
+      dtInicioReal,
+      dtTermReal
+    ];
 
     const linhaEstaVazia = campos.every(c => c === '');
-    if (linhaEstaVazia) continue;
+    if (linhaEstaVazia) {
+      // agora NÃO bloqueia, só não entra na lógica de cálculo
+      continue;
+    }
 
-    temLinhaValida = true;
+    temLinhaPreenchida = true;
 
     if (tipo === 'subtitulo') {
       if (tituloIndex !== -1 && datasInicio.length > 0 && datasTermino.length > 0) {
         preencherDatas(linhas[tituloIndex], datasInicio, datasTermino);
       }
-      tituloIndex = i;
-      datasInicio = [];
+      tituloIndex  = i;
+      datasInicio  = [];
       datasTermino = [];
     } else if (tipo === 'linha') {
       if (dtInicioPrev) datasInicio.push(dtInicioPrev);
@@ -441,19 +494,18 @@ document.querySelector('form').addEventListener('submit', function(event) {
 
   function preencherDatas(tituloRow, inicios, fins) {
     const campoInicio = tituloRow.querySelector('input[name="inicio_previsto[]"]');
-    const campoFim = tituloRow.querySelector('input[name="termino_previsto[]"]');
+    const campoFim    = tituloRow.querySelector('input[name="termino_previsto[]"]');
 
     const menorData = inicios.filter(Boolean).sort((a,b)=>new Date(a)-new Date(b))[0];
     const maiorData = fins.filter(Boolean).sort((a,b)=>new Date(b)-new Date(a))[0];
 
-    if (campoInicio) campoInicio.value = menorData;
-    if (campoFim) campoFim.value = maiorData;
+    if (campoInicio && menorData) campoInicio.value = menorData;
+    if (campoFim && maiorData)    campoFim.value    = maiorData;
   }
 
-  if (!temLinhaValida) {
-    event.preventDefault();
-    alert('Nenhuma medição válida para salvar!');
-  } else {
+  // **IMPORTANTE**: não tem mais event.preventDefault(),
+  // o form sempre será enviado.
+  if (temLinhaPreenchida) {
     const inputs = form.querySelectorAll('textarea, input[type="text"], input[type="number"], input[type="date"]');
     inputs.forEach(input => {
       input.style.backgroundColor = '#e0ffe0';

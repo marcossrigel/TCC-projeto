@@ -127,7 +127,7 @@ if ($tipo_usuario === 'admin') {
 ?>
 
 <div class="container">
-    <h2>Projeto - <?php echo htmlspecialchars($nome_iniciativa); ?></h2>
+    <h2><?php echo htmlspecialchars($nome_iniciativa); ?> - Projeto e Licitações</h2>
 
     <form method="post" action="index.php?page=projeto_licitacoes&id_iniciativa=<?php echo $id_iniciativa; ?>">
         <div class="table-wrapper">

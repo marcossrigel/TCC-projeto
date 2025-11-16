@@ -133,7 +133,7 @@ if ($tipo_usuario === 'admin') {
         <?php while ($linha = mysqli_fetch_assoc($dados)) : ?>
           <tr data-id="<?php echo (int)$linha['id']; ?>">
             <input type="hidden" name="ids[]" value="<?php echo (int)$linha['id']; ?>">
-            <td><input type="text" name="valor_orcamento[]" value="<?php echo money_br($linha['valor_orcamento'] ?? null); ?>"></td>
+            <td><input type="text" name="valor_orcamento[]" value="<?php echo money_br($linha['valor_orcamento'] ?? null); ?>" readonly></td>
             <td><input type="text" name="valor_bm[]"        value="<?php echo money_br($linha['valor_bm'] ?? null); ?>"></td>
             <td><input type="text" name="saldo_obra[]"      value="<?php echo money_br($linha['saldo_obra'] ?? null); ?>"></td>
 

@@ -133,23 +133,22 @@ if (isset($_POST['salvar'])) {
         mysqli_query($conexao, $query_insert);
     }
 
-    // --- Sincroniza valores na tabela MEDIÇÕES do DONO ---
-    $valor_total_para_medicoes = $valor_inicial_obra;
-    $valor_bm_para_medicoes    = $valor_aditivo;
+    $valor_total_para_medicoes = $valor_total_obra; 
+    $valor_bm_para_medicoes    = $valor_aditivo; 
 
     $qMed = mysqli_query($conexao, "
-      SELECT id FROM medicoes 
-      WHERE id_usuario = $id_dono AND id_iniciativa = $id_iniciativa LIMIT 1
+      SELECT COUNT(*) AS total 
+      FROM medicoes 
+      WHERE id_usuario = $id_dono AND id_iniciativa = $id_iniciativa
     ");
+    $temMedicoes = $qMed ? ((int)mysqli_fetch_assoc($qMed)['total'] > 0) : false;
 
-    if ($qMed && mysqli_num_rows($qMed) > 0) {
-        $linha = mysqli_fetch_assoc($qMed);
-        $id_medicao = (int)$linha['id'];
+    if ($temMedicoes) {
         mysqli_query($conexao, "
           UPDATE medicoes 
           SET valor_orcamento = $valor_total_para_medicoes, 
               valor_bm       = $valor_bm_para_medicoes
-          WHERE id = $id_medicao
+          WHERE id_usuario = $id_dono AND id_iniciativa = $id_iniciativa
         ");
     } else {
         mysqli_query($conexao, "
@@ -157,6 +156,7 @@ if (isset($_POST['salvar'])) {
           VALUES ($id_dono, $id_iniciativa, $valor_total_para_medicoes, $valor_bm_para_medicoes, NOW())
         ");
     }
+
 
     header("Location: index.php?page=info_contratuais&id_iniciativa=$id_iniciativa");
     exit;
