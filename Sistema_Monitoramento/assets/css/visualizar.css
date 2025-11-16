@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 body {
   font-family: Arial, sans-serif;
   background-color: #e9eef1;
@@ -252,4 +253,260 @@ h1 {
   .acoes button {
     flex: 1 1 100%;
   }
+=======
+body {
+  font-family: Arial, sans-serif;
+  background-color: #e9eef1;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+}
+
+h1 {
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #000;
+}
+
+.accordion.concluido {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.accordion {
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 18px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accordion:hover {
+  background-color: #f9f9f9;
+}
+
+.panel {
+  padding: 0 0 15px 0;
+  display: none;
+  background-color: white;
+  overflow: hidden;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
+}
+
+.panel p {
+  margin: 10px 18px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.seta {
+  font-size: 22px;
+  transform: rotate(0deg);
+  transition: transform 0.3s ease;
+}
+
+.accordion.active .seta {
+  transform: rotate(180deg);
+}
+
+.button-left {
+  margin: 10px 18px 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.button-left button {
+  padding: 8px 16px;
+  background-color: #4da6ff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.button-left button:hover {
+  background-color: #3399ff;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 0 18px;
+}
+
+.acoes button {
+  padding: 12px;
+  font-size: 15px;
+  border: none;
+  border-radius: 10px;
+  background-color: #f1f5f9;
+  color: #333;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex: 1 1 45%;
+  min-width: 140px;
+}
+
+.acoes button:hover {
+  background-color: #e0e7ff;
+}
+
+.botao-voltar {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+.botao-voltar button {
+  padding: 10px 20px;
+  background-color: #4da6ff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.botao-voltar button:hover {
+  background-color: #3399ff;
+}
+
+.topo-linha {
+  position: relative;
+  text-align: center;
+  margin-bottom: 50px; 
+}
+
+.topo-linha h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #000;
+}
+
+.voltar-box {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.voltar-box button {
+  padding: 8px 16px;
+  background-color: #4da6ff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.drag-ghost {
+  opacity: 0.5;
+  background-color: #cce5ff;
+}
+.item {
+  cursor: move;
+}
+
+.voltar-box button:hover {
+  background-color: #3399ff;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: #e9eef1;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #ccc;
+  flex-wrap: wrap;
+}
+
+.top-bar-lado {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.top-bar-lado:first-child {
+  justify-content: flex-start;
+}
+
+.top-bar-lado:last-child {
+  justify-content: flex-end;
+}
+
+.titulo-topo {
+  margin: 0;
+  font-size: 24px;
+  text-align: center;
+  flex: none;
+}
+
+.botao-topo {
+  background-color: #007bff;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+}
+
+.botao-topo:hover {
+  background-color: #0056b3;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+  h1 {
+    font-size: 22px;
+  }
+  .panel p {
+    font-size: 14px;
+  }
+  .acoes {
+    flex-direction: column;
+  }
+  .acoes button {
+    flex: 1 1 100%;
+  }
+>>>>>>> 7a6b3a60ed50304554a32283faa4a38b5b504435
 }
