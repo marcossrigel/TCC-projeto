@@ -224,10 +224,6 @@ function e($v) {
         </div>
 
         <div class="flex items-center justify-end gap-2">
-          <a href="index.php?page=home"
-            class="rounded-full px-4 py-2 border border-slate-300 text-slate-800 hover:bg-slate-50">
-            Cancelar
-          </a>
 
           <button type="submit"
                   class="rounded-full px-5 py-2 bg-blue-600 text-white font-semibold hover:bg-blue-700">

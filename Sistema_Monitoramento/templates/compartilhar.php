@@ -1,6 +1,4 @@
 <?php
-// templates/compartilhar.php
-
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -12,22 +10,15 @@ if (empty($_SESSION['id_usuario'])) {
   exit('Sem sessão ativa.');
 }
 
-require_once __DIR__ . '/config.php'; // garante $conexao
+require_once __DIR__ . '/config.php';
 
 $id_usuario = (int)$_SESSION['id_usuario'];
-
-/* ===========================
-   1) Minhas iniciativas
-   =========================== */
 $sql_iniciativas = "SELECT id, iniciativa FROM iniciativas WHERE id_usuario = ? ORDER BY id DESC";
 $stmtIni = $conexao->prepare($sql_iniciativas);
 $stmtIni->bind_param('i', $id_usuario);
 $stmtIni->execute();
 $res_iniciativas = $stmtIni->get_result();
 
-/* ===========================
-   2) Já compartilhado (usuario + iniciativas)
-   =========================== */
 $sql_comp = "
   SELECT 
       u.id_usuario            AS id_usuario,
@@ -46,7 +37,6 @@ $stmtComp->bind_param('i', $id_usuario);
 $stmtComp->execute();
 $res_comp = $stmtComp->get_result();
 
-/* monta mapa: usuario => iniciativas[] */
 $compart_map = [];
 if ($res_comp && $res_comp->num_rows) {
   while ($r = $res_comp->fetch_assoc()) {

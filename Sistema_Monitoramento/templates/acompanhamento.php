@@ -9,7 +9,6 @@ if (!isset($_SESSION['id_usuario'])) { header('Location: login.php'); exit; }
 require_once 'config.php';
 mysqli_set_charset($conexao, 'utf8mb4');
 
-// 1) Pega parâmetros e sessão
 $id_iniciativa      = isset($_GET['id_iniciativa']) ? (int)$_GET['id_iniciativa'] : 0;
 $id_usuario_logado  = (int)($_SESSION['id_usuario'] ?? 0);
 $tipo_usuario       = $_SESSION['tipo_usuario'] ?? '';
@@ -31,7 +30,6 @@ $id_dono         = (int)$ini['id_dono'];
 $nome_iniciativa = $ini['iniciativa'] ?? 'Iniciativa Desconhecida';
 $diretoria       = trim($ini['ib_diretoria'] ?? '');
 
-// 3) Permissão (bypass para admin)
 $temAcesso = ($tipo_usuario === 'admin') || ($id_usuario_logado === $id_dono);
 
 if (!$temAcesso) {
@@ -49,9 +47,6 @@ if (!$temAcesso) {
 }
 
 if (!$temAcesso) { die("Sem permissão para acessar esta iniciativa."); }
-
-// 4) (o restante do seu código: salvar POST, listar pendências, HTML, etc.)
-
 
 if (isset($_POST['salvar'])) {
   $problemas      = $_POST['problema']      ?? [];
@@ -99,14 +94,9 @@ $dados_pendencias = mysqli_query(
    ORDER BY id ASC"
 );
 
-// URL do botão Voltar
 if ($tipo_usuario === 'admin') {
-  // Admin volta para a lista da mesma diretoria (visualizar.php)
   $url_voltar = 'index.php?page=visualizar&diretoria=' . rawurlencode($diretoria ?: 'Educacao');
-  // Se preferir voltar para o grid de diretorias, use:
-  // $url_voltar = 'index.php?page=diretorias';
 } else {
-  // Usuário comum volta para a home dele
   $url_voltar = 'index.php?page=home';
 }
 ?>
