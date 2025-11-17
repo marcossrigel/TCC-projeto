@@ -74,18 +74,30 @@ if (isset($_POST['salvar'])) {
     $prazo_execucao_atual    = $_POST['prazo_execucao_atual'] ?? '';
 
     function limpar_valor_decimal($valor) {
-        $valor = trim((string)$valor);
-        if ($valor === '' || strtolower($valor) === 'r$') return "NULL";
-        $valor = str_replace(['R$', ' ', '.', ','], ['', '', '', '.'], $valor);
-        return is_numeric($valor) ? $valor : "NULL";
+      $valor = trim((string)$valor);
+      if ($valor === '' || strtolower($valor) === 'r$') return "NULL";
+      $valor = str_replace(['R$', ' ', '.', ','], ['', '', '', '.'], $valor);
+      return is_numeric($valor) ? $valor : "NULL";
     }
+
+    function soma_valores($v1, $v2) {
+      // v1 e v2 saem de limpar_valor_decimal
+      if ($v1 === "NULL" && $v2 === "NULL") {
+          return "NULL";
+      }
+      $n1 = ($v1 === "NULL") ? 0 : (float)$v1;
+      $n2 = ($v2 === "NULL") ? 0 : (float)$v2;
+      $soma = $n1 + $n2;
+      return is_numeric($soma) ? $soma : "NULL";
+    }   
 
     $valor_inicial_obra      = limpar_valor_decimal($_POST['valor_inicial_obra'] ?? '');
     $valor_aditivo_obra      = limpar_valor_decimal($_POST['valor_aditivo_obra'] ?? '');
-    $valor_total_obra        = limpar_valor_decimal($_POST['valor_total_obra'] ?? '');
+    $valor_total_obra        = soma_valores($valor_inicial_obra, $valor_aditivo_obra);
+
     $valor_inicial_contrato  = limpar_valor_decimal($_POST['valor_inicial_contrato'] ?? '');
     $valor_aditivo           = limpar_valor_decimal($_POST['valor_aditivo'] ?? '');
-    $valor_contrato          = limpar_valor_decimal($_POST['valor_contrato'] ?? '');
+    $valor_contrato          = soma_valores($valor_inicial_contrato, $valor_aditivo);
 
     $cod_subtracao           = mysqli_real_escape_string($conexao, $_POST['cod_subtracao'] ?? '');
     $secretaria_demandante   = mysqli_real_escape_string($conexao, $_POST['secretaria_demandante'] ?? '');
@@ -195,12 +207,25 @@ if ($tipo_usuario === 'admin') {
         <tr><td>Prazo de Execução Original</td><td><input type="text" name="prazo_execucao_original" value="<?php echo $dados['prazo_execucao_original'] ?? ''; ?>"></td></tr>
         <tr><td>Prazo de Execução Atual</td><td><input type="text" name="prazo_execucao_atual" value="<?php echo $dados['prazo_execucao_atual'] ?? ''; ?>"></td></tr>
         
-        <tr><td>Valor Inicial da Obra</td><td><input type="text" class="dinheiro" name="valor_inicial_obra" value="<?php echo formatar_moeda($dados['valor_inicial_obra'] ?? ''); ?>"></td></tr>
-        <tr><td>Valor de Aditivo da Obra</td><td><input type="text" class="dinheiro" name="valor_aditivo_obra" value="<?php echo formatar_moeda($dados['valor_aditivo_obra'] ?? ''); ?>"></td></tr>
-        <tr><td>Valor Total da Obra</td><td><input type="text" class="dinheiro" name="valor_total_obra" value="<?php echo formatar_moeda($dados['valor_total_obra'] ?? ''); ?>"></td></tr>
-        <tr><td>Valor Inicial do Contrato</td><td><input type="text" class="dinheiro" name="valor_inicial_contrato" value="<?php echo formatar_moeda($dados['valor_inicial_contrato'] ?? ''); ?>"></td></tr>
-        <tr><td>Valor do Aditivo do Contrato</td><td><input type="text" class="dinheiro" name="valor_aditivo" value="<?php echo formatar_moeda($dados['valor_aditivo'] ?? ''); ?>"></td></tr>
-        <tr><td>Valor Total do Contrato</td><td><input type="text" class="dinheiro" name="valor_contrato" value="<?php echo formatar_moeda($dados['valor_contrato'] ?? ''); ?>"></td></tr>
+        <tr><td>Valor Inicial da Obra</td>
+            <td><input type="text" class="dinheiro" name="valor_inicial_obra" id="valor_inicial_obra"
+                      value="<?php echo formatar_moeda($dados['valor_inicial_obra'] ?? ''); ?>"></td></tr>
+        <tr><td>Valor de Aditivo da Obra</td>
+            <td><input type="text" class="dinheiro" name="valor_aditivo_obra" id="valor_aditivo_obra"
+                      value="<?php echo formatar_moeda($dados['valor_aditivo_obra'] ?? ''); ?>"></td></tr>
+        <tr><td>Valor Total da Obra</td>
+            <td><input type="text" class="dinheiro" name="valor_total_obra" id="valor_total_obra"
+               value="<?php echo formatar_moeda($dados['valor_total_obra'] ?? ''); ?>" readonly>
+            </td></tr>
+        <tr><td>Valor Inicial do Contrato</td>
+            <td><input type="text" class="dinheiro" name="valor_inicial_contrato" id="valor_inicial_contrato"
+                      value="<?php echo formatar_moeda($dados['valor_inicial_contrato'] ?? ''); ?>"></td></tr>
+        <tr><td>Valor do Aditivo do Contrato</td>
+            <td><input type="text" class="dinheiro" name="valor_aditivo" id="valor_aditivo"
+                      value="<?php echo formatar_moeda($dados['valor_aditivo'] ?? ''); ?>"></td></tr>
+        <tr><td>Valor Total do Contrato</td>
+        <td><input type="text" class="dinheiro" name="valor_contrato" id="valor_contrato"
+                  value="<?php echo formatar_moeda($dados['valor_contrato'] ?? ''); ?>" readonly></td></tr>
         
         <tr><td>Subação (LOA)</td><td><input type="text" name="cod_subtracao" value="<?php echo $dados['cod_subtracao'] ?? ''; ?>"></td></tr>
         <tr><td>Secretaria Demandante</td><td><input type="text" name="secretaria_demandante" value="<?php echo $dados['secretaria_demandante'] ?? ''; ?>"></td></tr>
@@ -214,3 +239,54 @@ if ($tipo_usuario === 'admin') {
       </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function brToFloat(v) {
+        if (!v) return 0;
+        v = v.replace(/[R$\s\.]/g, '').replace(',', '.');
+        var n = parseFloat(v);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function floatToBr(v) {
+        return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calcTotalObra() {
+        var ini = brToFloat(document.getElementById('valor_inicial_obra').value);
+        var ad  = brToFloat(document.getElementById('valor_aditivo_obra').value);
+        var total = ini + ad;
+        var campo = document.getElementById('valor_total_obra');
+        campo.value = total > 0 ? ('R$ ' + floatToBr(total)) : 'R$ ';
+    }
+
+    function calcTotalContrato() {
+        var ini = brToFloat(document.getElementById('valor_inicial_contrato').value);
+        var ad  = brToFloat(document.getElementById('valor_aditivo').value);
+        var total = ini + ad;
+        var campo = document.getElementById('valor_contrato');
+        campo.value = total > 0 ? ('R$ ' + floatToBr(total)) : 'R$ ';
+    }
+
+    ['valor_inicial_obra', 'valor_aditivo_obra'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', calcTotalObra);
+            el.addEventListener('blur',  calcTotalObra);
+        }
+    });
+
+    ['valor_inicial_contrato', 'valor_aditivo'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', calcTotalContrato);
+            el.addEventListener('blur',  calcTotalContrato);
+        }
+    });
+
+    // já calcula ao carregar a página (quando vier dados do banco)
+    calcTotalObra();
+    calcTotalContrato();
+});
+</script>
