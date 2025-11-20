@@ -169,6 +169,37 @@ if (isset($_POST['salvar'])) {
         ");
     }
 
+    $valor_total_obra = $valor_inicial_obra + $valor_aditivo_obra;
+    $valor_total_contrato = $valor_inicial_contrato + $valor_aditivo; // <-- corrigido
+
+    $query = "
+    INSERT INTO aditivos (
+        id_iniciativa,
+        valor_inicial_obra,
+        valor_aditivo_obra,
+        valor_total_obra,
+        valor_inicial_contrato,
+        valor_aditivo_contrato,
+        valor_total_contrato
+    ) VALUES (
+        $id_iniciativa,
+        $valor_inicial_obra,
+        $valor_aditivo_obra,
+        $valor_total_obra,
+        $valor_inicial_contrato,
+        $valor_aditivo,               -- <-- corrigido
+        $valor_total_contrato
+    )
+    ON DUPLICATE KEY UPDATE
+        valor_inicial_obra = VALUES(valor_inicial_obra),
+        valor_aditivo_obra = VALUES(valor_aditivo_obra),
+        valor_total_obra = VALUES(valor_total_obra),
+        valor_inicial_contrato = VALUES(valor_inicial_contrato),
+        valor_aditivo_contrato = VALUES(valor_aditivo_contrato),  -- <-- OK
+        valor_total_contrato = VALUES(valor_total_contrato)
+    ";
+
+    mysqli_query($conexao, $query);
 
     header("Location: index.php?page=info_contratuais&id_iniciativa=$id_iniciativa");
     exit;

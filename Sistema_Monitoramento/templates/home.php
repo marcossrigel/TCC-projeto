@@ -73,6 +73,11 @@ $sql = "SELECT *
                )
          ORDER BY id DESC";
 $iniciativas = $conexao->query($sql);
+
+function money_br($v){
+  if ($v === null || $v === '') return 'R$ 0,00';
+  return 'R$ '.number_format((float)$v, 2, ',', '.');
+}
 ?>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -133,6 +138,7 @@ $iniciativas = $conexao->query($sql);
                 $execucao = $row['ib_execucao'] ?? '';
                 $previsto = $row['ib_previsto'] ?? '';
                 $contrato = htmlspecialchars($row['numero_contrato'] ?? '', ENT_QUOTES, 'UTF-8');
+                $valorAcumuladoFmt = money_br($row['ib_valor_medio'] ?? 0);
 
                 // --- cálculo da variação (previsto - execução) ---
                 $execFloat = ($execucao !== '' && $execucao !== null) ? (float)$execucao : null;
@@ -179,7 +185,7 @@ $iniciativas = $conexao->query($sql);
                 data-previsto="<?= htmlspecialchars($prevStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-variacao="<?= htmlspecialchars($varStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-contrato="<?= $contrato ?>"
-                data-valor_medio="<?= htmlspecialchars($row['ib_valor_medio'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                data-valor_medio="<?= htmlspecialchars($valorAcumuladoFmt, ENT_QUOTES, 'UTF-8') ?>"
                 data-secretaria="<?= htmlspecialchars($row['ib_secretaria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-diretoria="<?= htmlspecialchars($row['ib_diretoria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-gestor="<?= htmlspecialchars($row['ib_gestor_responsavel'] ?? '', ENT_QUOTES, 'UTF-8') ?>"

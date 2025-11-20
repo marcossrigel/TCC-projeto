@@ -40,6 +40,36 @@ if (!$temAcesso) { die("Sem permissão para acessar esta iniciativa."); }
 function e($v){ return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 function money_br($v){ return ($v===null||$v==='') ? 'R$ ' : 'R$ '.number_format((float)$v,2,',','.'); }
 
+/**
+ * Atualiza ib_valor_medio (Valor Acumulado) na tabela iniciativas
+ * com a soma de todos os valor_bm da iniciativa.
+ */
+function atualizarValorAcumulado($conexao, $id_dono, $id_iniciativa) {
+  $id_dono       = (int)$id_dono;
+  $id_iniciativa = (int)$id_iniciativa;
+
+  $sqlSoma = "
+    SELECT SUM(valor_bm) AS total_bm
+    FROM medicoes
+    WHERE id_usuario = $id_dono
+      AND id_iniciativa = $id_iniciativa
+  ";
+  $resSoma = mysqli_query($conexao, $sqlSoma);
+
+  $totalBm = 0;
+  if ($resSoma && $rowSoma = mysqli_fetch_assoc($resSoma)) {
+      $totalBm = (float)($rowSoma['total_bm'] ?? 0);
+  }
+
+  $sqlUpdateIni = "
+    UPDATE iniciativas
+    SET ib_valor_medio = $totalBm
+    WHERE id = $id_iniciativa
+      AND id_usuario = $id_dono
+  ";
+  mysqli_query($conexao, $sqlUpdateIni);
+}
+
 // ---- Salvar (sempre no DONO) ----
 if (isset($_POST['salvar'])) {
   $valor_orcamento = $_POST['valor_orcamento'] ?? [];
@@ -83,6 +113,9 @@ if (isset($_POST['salvar'])) {
     mysqli_query($conexao,$sql);
   }
 
+  // Recalcula o acumulado DEPOIS de salvar tudo
+  atualizarValorAcumulado($conexao, $id_dono, $id_iniciativa);
+
   header("Location: index.php?page=medicoes&id_iniciativa=$id_iniciativa");
   exit;
 }
@@ -93,6 +126,9 @@ if (!empty($_POST['excluir_ids'])) {
     $id_excluir = (int)$id_excluir;
     mysqli_query($conexao, "DELETE FROM medicoes WHERE id=$id_excluir AND id_usuario=$id_dono AND id_iniciativa=$id_iniciativa");
   }
+
+  // Recalcula o acumulado DEPOIS de excluir
+  atualizarValorAcumulado($conexao, $id_dono, $id_iniciativa);
 }
 
 // ---- Carregar linhas do DONO ----
@@ -111,7 +147,6 @@ if ($tipo_usuario === 'admin') {
   $url_voltar = 'index.php?page=home';
 }
 ?>
-
 <div class="container">
   <h2><?php echo e($nome_iniciativa); ?> - Acompanhamento de Medições</h2>
 
