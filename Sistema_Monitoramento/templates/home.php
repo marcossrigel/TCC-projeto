@@ -64,12 +64,21 @@ $usuarioRedeEsc = htmlspecialchars($usuarioRede ?: '—', ENT_QUOTES, 'UTF-8');
  */
 $sql = "SELECT 
     iniciativas.*,
-    COUNT(p.id) AS total_pendencias
+    COUNT(DISTINCT p.id) AS total_pendencias,
+    COUNT(DISTINCT a.id_iniciativa) AS qtd_aditivos,
+    ic.valor_inicial_obra,
+    ic.valor_aditivo_obra
 
 FROM iniciativas
 
 LEFT JOIN pendencias p 
     ON p.id_iniciativa = iniciativas.id
+
+LEFT JOIN aditivos a 
+    ON a.id_iniciativa = iniciativas.id
+
+LEFT JOIN contratuais ic 
+    ON ic.id_iniciativa = iniciativas.id
 
 WHERE iniciativas.id_usuario = $id_usuario
    OR EXISTS (
@@ -81,6 +90,7 @@ WHERE iniciativas.id_usuario = $id_usuario
 
 GROUP BY iniciativas.id
 ORDER BY iniciativas.id DESC";
+
 $iniciativas = $conexao->query($sql);
 
 function money_br($v){
@@ -194,12 +204,15 @@ function money_br($v){
                 data-execucao="<?= htmlspecialchars($execStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-previsto="<?= htmlspecialchars($prevStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-variacao="<?= htmlspecialchars($varStr, ENT_QUOTES, 'UTF-8') ?>"
+                data-valor_inicial="<?= money_br($row['valor_inicial_obra'] ?? 0) ?>"
+                data-aditivos="<?= money_br($row['valor_aditivo_obra'] ?? 0) ?>"
                 data-contrato="<?= $contrato ?>"
                 data-pendencias="<?= $pendencias ?>"
                 data-valor_medio="<?= htmlspecialchars($valorAcumuladoFmt, ENT_QUOTES, 'UTF-8') ?>"
                 data-secretaria="<?= htmlspecialchars($row['ib_secretaria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-diretoria="<?= htmlspecialchars($row['ib_diretoria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-gestor="<?= htmlspecialchars($row['ib_gestor_responsavel'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                data-qtd_aditivos="<?= (int)($row['qtd_aditivos'] ?? 0) ?>"
                 data-fiscal="<?= htmlspecialchars($row['ib_fiscal'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-objeto="<?= htmlspecialchars($row['objeto'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-info="<?= htmlspecialchars($row['informacoes_gerais'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
@@ -455,6 +468,10 @@ function money_br($v){
           <p><span class="text-slate-700">Diretoria:</span> <span class="font-medium" id="det_diretoria"></span></p>
           <p><span class="text-slate-700">Gestor:</span> <span class="font-medium" id="det_gestor"></span></p>
           <p><span class="text-slate-700">Fiscal:</span> <span class="font-medium" id="det_fiscal"></span></p>
+          <p><span class="text-slate-700">Valor Inicial da Obra:</span> 
+          <span class="font-medium" id="det_valor_inicial"></span></p>
+          <p><span class="text-slate-700">Qtd de Aditivos:</span>
+          <span class="font-medium" id="det_qtd_aditivos"></span></p>
         </div>
 
         <div>
@@ -644,6 +661,24 @@ function toast(msg, type='ok') {
   // Abre o modal preenchendo os spans com os data-atributes do card
   function openWith(el) {
     const get = (k) => el.dataset[k] || '—';
+    const det_titulo = document.getElementById('det_titulo');
+    const det_data = document.getElementById('det_data');
+    const det_contrato = document.getElementById('det_contrato');
+    const det_status = document.getElementById('det_status');
+    const det_execucao = document.getElementById('det_execucao');
+    const det_previsto = document.getElementById('det_previsto');
+    const det_variacao = document.getElementById('det_variacao');
+    const det_pendencias = document.getElementById('det_pendencias');
+    const det_valor = document.getElementById('det_valor');
+    const det_secretaria = document.getElementById('det_secretaria');
+    const det_diretoria = document.getElementById('det_diretoria');
+    const det_gestor = document.getElementById('det_gestor');
+    const det_fiscal = document.getElementById('det_fiscal');
+    const det_objeto = document.getElementById('det_objeto');
+    const det_info = document.getElementById('det_info');
+    const det_obs = document.getElementById('det_obs');
+    const det_valor_inicial = document.getElementById('det_valor_inicial');
+    const det_qtd_aditivos = document.getElementById('det_qtd_aditivos');
 
     det_titulo.textContent     = get('iniciativa');
     det_data.textContent       = get('data_vistoria');
@@ -655,12 +690,14 @@ function toast(msg, type='ok') {
     det_variacao.textContent   = get('variacao');
     det_valor.textContent      = get('valor_medio');
     det_secretaria.textContent = get('secretaria');
+    det_qtd_aditivos.textContent = get('qtd_aditivos');
     det_diretoria.textContent  = get('diretoria');
     det_gestor.textContent     = get('gestor');
     det_fiscal.textContent     = get('fiscal');
     det_objeto.textContent     = get('objeto');
     det_info.textContent       = get('info');
     det_obs.textContent        = get('obs');
+    det_valor_inicial.textContent = get('valor_inicial');
 
     currentId = el.dataset.id;
     modal.classList.remove('hidden');
@@ -715,8 +752,10 @@ function toast(msg, type='ok') {
 
   // Quando clicar em um card → abre o modal
   document.getElementById('cardsIniciativas')?.addEventListener('click', (ev) => {
-    const card = ev.target.closest('article[data-id]');
-    if (card) openWith(card);
+  const card = ev.target.closest('article[data-id]');
+    if (!card) return;
+
+    openWith(card);
   });
 
   // Fechar modal (backdrop ou botão Fechar ×)
