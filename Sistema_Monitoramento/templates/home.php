@@ -62,16 +62,25 @@ $usuarioRedeEsc = htmlspecialchars($usuarioRede ?: '—', ENT_QUOTES, 'UTF-8');
  * - criadas por ele OU
  * - compartilhadas com ele.
  */
-$sql = "SELECT *
-          FROM iniciativas
-         WHERE id_usuario = $id_usuario
-            OR EXISTS (
-                 SELECT 1
-                   FROM compartilhamentos c
-                  WHERE c.id_iniciativa = iniciativas.id
-                    AND c.id_compartilhado = $id_usuario
-               )
-         ORDER BY id DESC";
+$sql = "SELECT 
+    iniciativas.*,
+    COUNT(p.id) AS total_pendencias
+
+FROM iniciativas
+
+LEFT JOIN pendencias p 
+    ON p.id_iniciativa = iniciativas.id
+
+WHERE iniciativas.id_usuario = $id_usuario
+   OR EXISTS (
+        SELECT 1
+        FROM compartilhamentos c
+        WHERE c.id_iniciativa = iniciativas.id
+        AND c.id_compartilhado = $id_usuario
+   )
+
+GROUP BY iniciativas.id
+ORDER BY iniciativas.id DESC";
 $iniciativas = $conexao->query($sql);
 
 function money_br($v){
@@ -135,6 +144,7 @@ function money_br($v){
             <?php while ($row = $iniciativas->fetch_assoc()): ?>
               <?php
                 $status   = htmlspecialchars($row['ib_status'] ?? '', ENT_QUOTES, 'UTF-8');
+                $pendencias = (int)($row['total_pendencias'] ?? 0);
                 $execucao = $row['ib_execucao'] ?? '';
                 $previsto = $row['ib_previsto'] ?? '';
                 $contrato = htmlspecialchars($row['numero_contrato'] ?? '', ENT_QUOTES, 'UTF-8');
@@ -185,6 +195,7 @@ function money_br($v){
                 data-previsto="<?= htmlspecialchars($prevStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-variacao="<?= htmlspecialchars($varStr, ENT_QUOTES, 'UTF-8') ?>"
                 data-contrato="<?= $contrato ?>"
+                data-pendencias="<?= $pendencias ?>"
                 data-valor_medio="<?= htmlspecialchars($valorAcumuladoFmt, ENT_QUOTES, 'UTF-8') ?>"
                 data-secretaria="<?= htmlspecialchars($row['ib_secretaria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                 data-diretoria="<?= htmlspecialchars($row['ib_diretoria'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
@@ -206,6 +217,7 @@ function money_br($v){
                     <?= $status ?: 'Sem status' ?>
                   </span>
                   <span class="text-slate-700">Exec:</span>
+                  
                     <?php
                       if ($execucao !== null && $execucao !== '') {
                           echo number_format((float)$execucao, 1, ',', '.') . '%';
@@ -437,6 +449,7 @@ function money_br($v){
           <p><span class="text-slate-700">% Execução:</span> <span class="font-medium" id="det_execucao"></span></p>
           <p><span class="text-slate-700">% Previsto:</span> <span class="font-medium" id="det_previsto"></span></p>
           <p><span class="text-slate-700">% Variação:</span> <span class="font-medium" id="det_variacao"></span></p>
+          <p><span class="text-slate-700">Pendências:</span> <span class="font-medium" id="det_pendencias"></span></p>
           <p><span class="text-slate-700">Valor Acumulado:</span> <span class="font-medium" id="det_valor"></span></p>
           <p><span class="text-slate-700">Secretaria:</span> <span class="font-medium" id="det_secretaria"></span></p>
           <p><span class="text-slate-700">Diretoria:</span> <span class="font-medium" id="det_diretoria"></span></p>
@@ -638,6 +651,7 @@ function toast(msg, type='ok') {
     det_status.textContent     = get('status');
     det_execucao.textContent   = get('execucao');
     det_previsto.textContent   = get('previsto');
+    det_pendencias.textContent = get('pendencias');
     det_variacao.textContent   = get('variacao');
     det_valor.textContent      = get('valor_medio');
     det_secretaria.textContent = get('secretaria');
