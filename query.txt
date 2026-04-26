@@ -1,0 +1,50 @@
+SELECT 
+    i.id,
+    i.iniciativa AS obra,
+
+    -- Data
+    i.data_vistoria,
+
+    -- Contrato
+    i.numero_contrato,
+
+    -- Execução
+    CAST(REPLACE(REPLACE(i.ib_execucao, '%', ''), ',', '.') AS DECIMAL(10,2)) AS percentual_execucao,
+
+    -- Previsto
+    CAST(REPLACE(REPLACE(i.ib_previsto, '%', ''), ',', '.') AS DECIMAL(10,2)) AS percentual_previsto,
+
+    -- 🔥 Variação calculada
+    (
+        CAST(REPLACE(REPLACE(i.ib_previsto, '%', ''), ',', '.') AS DECIMAL(10,2))
+        -
+        CAST(REPLACE(REPLACE(i.ib_execucao, '%', ''), ',', '.') AS DECIMAL(10,2))
+    ) AS percentual_variacao,
+
+    -- Valor acumulado
+    CAST(
+        REPLACE(REPLACE(REPLACE(i.ib_valor_medio, 'R$', ''), '.', ''), ',', '.')
+    AS DECIMAL(10,2)) AS valor_acumulado,
+
+    -- Status
+    i.ib_status AS status,
+
+    -- Pendências 🔥
+    COUNT(p.id) AS pendencias,
+
+    -- Organização
+    i.ib_secretaria,
+    i.ib_diretoria,
+
+    -- Responsáveis
+    i.ib_gestor_responsavel AS gestor,
+    i.ib_fiscal AS fiscal
+
+FROM iniciativas i
+
+LEFT JOIN pendencias p 
+    ON p.id_iniciativa = i.id
+
+WHERE i.iniciativa LIKE '%Creche%'
+
+GROUP BY i.id;
